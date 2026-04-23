@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WB Scanner Pro</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #000; color: #fff; margin: 0; padding: 20px; }
+        #reader { width: 100%; max-width: 500px; margin: 0 auto; border-radius: 24px; overflow: hidden; border: 2px solid #333; background: #111; }
+        .controls { display: flex; flex-direction: column; gap: 16px; margin-top: 25px; }
+        
+        /* Кнопки с 3D-эффектом */
+        button { 
+            padding: 18px; border: none; border-radius: 16px; font-weight: 800; cursor: pointer; 
+            font-size: 16px; transition: all 0.1s ease; -webkit-tap-highlight-color: transparent;
+            text-transform: uppercase; position: relative; top: 0;
+        }
+        button:active { top: 4px; }
+
+        .btn-start { 
+            background: linear-gradient(145deg, #bf5ceb, #9b41cc); color: white; 
+            box-shadow: 0 6px 0 #6e2796, 0 10px 15px rgba(0,0,0,0.4);
+        }
+        .btn-start:active { box-shadow: 0 2px 0 #6e2796, 0 4px 6px rgba(0,0,0,0.4); }
+
+        .btn-copy { 
+            background: linear-gradient(145deg, #32d74b, #28a73a); color: white;
+            box-shadow: 0 6px 0 #1b7a28, 0 10px 15px rgba(0,0,0,0.4);
+        }
+        .btn-copy:active { box-shadow: 0 2px 0 #1b7a28, 0 4px 6px rgba(0,0,0,0.4); }
+
+        .btn-clear { 
+            background: linear-gradient(145deg, #ff5e54, #e0382d); color: white;
+            box-shadow: 0 6px 0 #9c1d14, 0 10px 15px rgba(0,0,0,0.4);
+        }
+        .btn-clear:active { box-shadow: 0 2px 0 #9c1d14, 0 4px 6px rgba(0,0,0,0.4); }
+
+        .btn-torch { 
+            background: linear-gradient(145deg, #ffd60a, #d4b200); color: #000; 
+            display: none; box-shadow: 0 6px 0 #998000, 0 10px 15px rgba(0,0,0,0.4);
+        }
+        
+        #list-container { margin-top: 30px; background: #1c1c1e; border-radius: 24px; padding: 20px; }
+        .status-bar { display: flex; justify-content: space-between; align-items: center; }
+        .count-value { color: #32d74b; font-size: 28px; font-weight: 800; }
+        
+        ul { list-style: none; padding: 0; margin-top: 15px; }
+        li { padding: 12px 0; border-top: 1px solid #2c2c2e; display: flex; flex-direction: column; }
+        .code-text { font-size: 18px; font-weight: 600; }
+        .time-text { font-size: 12px; color: #636366; }
+    </style>
+</head>
+<body>
+    <div id="reader"></div>
+    <div class="controls">
+        <button id="start-btn" class="btn-start" onclick="initScanner()">🚀 ЗАПУСТИТЬ СКАНЕР</button>
+        <button id="torch-button" class="btn-torch" onclick="toggleTorch()">🔦 ФОНАРИК</button>
+        <button class="btn-copy" onclick="copyToClipboard()">📋 КОПИРОВАТЬ СПИСОК</button>
+        <button class="btn-clear" onclick="clearList()">🗑️ ОЧИСТИТЬ СПИСОК</button>
+    </div>
+    <div id="list-container">
+        <div class="status-bar">
+            <span style="color: #8e8e93; font-weight: 600;">СЧИТАНО КОДОВ</span>
+            <span id="count" class="count-value">0</span>
+        </div>
+        <ul id="scanned-codes"></ul>
+    </div>
+
+    <script>
+        let codes = JSON.parse(localStorage.getItem('wb_codes_v3') || '[]');
+        let html5QrCode = null;
+        let lastScanTime = 0;
+        const SCAN_DELAY = 2000; // Задержка 2 секунды 
+
+        window.onload = () => renderList();
+
+        async function initScanner() {
+            if (html5QrCode) await html5QrCode.stop().catch(() => {});
+            html5QrCode = new Html5Qrcode("reader");
+            
+            try {
+                await html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 300, height: 150 } }, (text) => {
+                    const now = Date.now();
+                    if (now - lastScanTime < SCAN_DELAY) return;
+
+                    let match = text.match(/\d{10,}/);
+                    let processed = match ? match[0] : text;
+
+                    if (!codes.some(c => c.text === processed)) {
+                        codes.push({ text: processed, time: new Date().toLocaleTimeString() });
+                        localStorage.setItem('wb_codes_v3', JSON.stringify(codes));
+                        renderList();
+                        new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(()=>{});
+                    }
+                    lastScanTime = now;
+                });
+                document.getElementById('start-btn').style.display = 'none';
+                setTimeout(checkTorch, 1000);
+            } catch (err) {
+                alert("Ошибка доступа. Chrome блокирует камеру для локальных файлов (content://). Попробуйте запустить через веб-хостинг или локальный сервер.");
+            }
+        }
+
+        function renderList() {
+            const list = document.getElementById('scanned-codes');
+            list.innerHTML = '';
+            [...codes].reverse().forEach(item => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span class="code-text">${item.text}</span><span class="time-text">${item.time}</span>`;
+                list.appendChild(li);
+            });
+            document.getElementById('count').innerText = codes.length;
+        }
+
+        function copyToClipboard() {
+            if (!codes.length) return;
+            const text = codes.map(c => c.text).join('\n');
+            navigator.clipboard.writeText(text).then(() => alert("Список скопирован!"));
+        }
+
+        function clearList() {
+            if (confirm("Очистить список?")) {
+                codes = [];
+                localStorage.removeItem('wb_codes_v3');
+                renderList();
+            }
+        }
+
+        function checkTorch() {
+            const track = html5QrCode.getRunningTrackCapabilities();
+            if (track && track.torch) document.getElementById('torch-button').style.display = 'block';
+        }
+
+        async function toggleTorch() {
+            const state = document.getElementById('torch-button').innerText.includes("ВКЛ");
+            await html5QrCode.applyVideoConstraints({ advanced: [{ torch: state }] });
+            document.getElementById('torch-button').innerText = state ? "❌ ВЫКЛЮЧИТЬ" : "🔦 ФОНАРИК";
+        }
+    </script>
+</body>
+</html>
