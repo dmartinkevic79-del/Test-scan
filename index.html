@@ -16,13 +16,22 @@
             color: #fff; 
             margin: 0; 
             padding: 20px; 
-            transition: background 0.2s ease; /* Для эффекта вспышки */
-            user-select: none; /* Запрет выделения текста для "нативного" ощущения */
+            transition: background 0.2s ease; /* Эффект вспышки */
+            user-select: none; /* "Нативное" ощущение: нельзя выделить текст */
             -webkit-tap-highlight-color: transparent;
         }
         
-        #reader { width: 100%; max-width: 500px; margin: 0 auto; border-radius: 24px; overflow: hidden; border: 2px solid #333; background: #111; }
+        #reader { 
+            width: 100%; 
+            max-width: 500px; 
+            margin: 0 auto; 
+            border-radius: 24px; 
+            overflow: hidden; 
+            border: 2px solid #333; 
+            background: #111; 
+        }
         
+        /* Кнопки */
         .controls { display: flex; flex-direction: column; gap: 16px; margin-top: 25px; }
         
         button { 
@@ -37,6 +46,7 @@
         .btn-clear { background: linear-gradient(145deg, #ff5e54, #e0382d); color: white; box-shadow: 0 6px 0 #9c1d14; }
         .btn-torch { background: linear-gradient(145deg, #ffd60a, #d4b200); color: #000; display: none; box-shadow: 0 6px 0 #998000; }
         
+        /* Список кодов */
         #list-container { margin-top: 30px; background: #1c1c1e; border-radius: 24px; padding: 20px; margin-bottom: 60px; }
         .status-bar { display: flex; justify-content: space-between; align-items: center; }
         .count-value { color: #32d74b; font-size: 28px; font-weight: 800; }
@@ -49,21 +59,24 @@
         /* Брендирование */
         .footer {
             text-align: center;
-            font-size: 12px;
+            font-size: 11px;
             color: #444;
             margin-top: 20px;
-            padding-bottom: 20px;
+            padding-bottom: 30px;
             font-weight: 600;
+            letter-spacing: 0.5px;
         }
         
-        /* Вспышка при сканировании */
+        /* Класс для вспышки */
         .flash-active {
             background-color: var(--success-flash) !important;
         }
     </style>
 </head>
 <body>
+
     <div id="reader"></div>
+
     <div class="controls">
         <button id="start-btn" class="btn-start" onclick="initScanner()">🚀 ЗАПУСТИТЬ СКАНЕР</button>
         <button id="torch-button" class="btn-torch" onclick="toggleTorch()">🔦 ФОНАРИК</button>
@@ -80,14 +93,14 @@
     </div>
 
     <div class="footer">
-        Developed by D. Martinkevich for SofrinoKBT
+        DEVELOPED BY D. MARTINKEVICH FOR SOFRINOKBT
     </div>
 
     <script>
-        let codes = JSON.parse(localStorage.getItem('wb_codes_v4') || '[]');
+        let codes = JSON.parse(localStorage.getItem('wb_codes_v5') || '[]');
         let html5QrCode = null;
         let lastScanTime = 0;
-        const SCAN_DELAY = 2500; 
+        const SCAN_DELAY = 2500; // Задержка между сканами для стабильности
 
         window.onload = () => renderList();
 
@@ -95,14 +108,37 @@
             if (html5QrCode) await html5QrCode.stop().catch(() => {});
             html5QrCode = new Html5Qrcode("reader");
             
+            const config = {
+                fps: 30,
+                // Вытянутая область сканирования идеальна для штрихкодов
+                qrbox: { width: 320, height: 150 },
+                // Использовать нативный API телефона (BarcodeDetector) для скорости
+                experimentalFeatures: {
+                    useBarCodeDetectorIfSupported: true
+                },
+                // Ограничиваем список форматов, чтобы процессор не гадал
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.QR_CODE
+                ]
+            };
+
             try {
                 await html5QrCode.start(
-                    { facingMode: "environment" }, 
-                    { fps: 20, qrbox: { width: 280, height: 160 } }, 
+                    { 
+                        facingMode: "environment",
+                        // Запрашиваем высокое разрешение для мелких штрихкодов
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }, 
+                    config, 
                     (text) => {
                         const now = Date.now();
                         if (now - lastScanTime < SCAN_DELAY) return;
 
+                        // Очистка текста от лишних символов (оставляем цифры если это артикул)
                         let match = text.match(/\d{10,}/);
                         let processed = match ? match[0] : text;
 
@@ -113,11 +149,12 @@
                                 time: timestamp.toLocaleTimeString(),
                                 date: timestamp.toLocaleDateString()
                             });
-                            localStorage.setItem('wb_codes_v4', JSON.stringify(codes));
+                            localStorage.setItem('wb_codes_v5', JSON.stringify(codes));
                             
                             triggerVisualFeedback();
                             renderList();
                             
+                            // Звуковой сигнал
                             new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(()=>{});
                         }
                         lastScanTime = now;
@@ -126,10 +163,11 @@
                 document.getElementById('start-btn').style.display = 'none';
                 setTimeout(checkTorch, 1000);
             } catch (err) {
-                alert("Ошибка камеры. Используйте HTTPS или локальный сервер.");
+                alert("Ошибка: Камере нужен HTTPS или локальный сервер для работы.");
             }
         }
 
+        // Эффект зеленой вспышки экрана
         function triggerVisualFeedback() {
             document.body.classList.add('flash-active');
             setTimeout(() => {
@@ -140,11 +178,12 @@
         function renderList() {
             const list = document.getElementById('scanned-codes');
             list.innerHTML = '';
+            // Показываем последние сканы сверху
             [...codes].reverse().forEach(item => {
                 const li = document.createElement('li');
                 li.innerHTML = `
                     <span class="code-text">${item.text}</span>
-                    <span class="time-text">🕒 ${item.date} | ${item.time}</span>
+                    <span class="time-text">🕒 ${item.date} в ${item.time}</span>
                 `;
                 list.appendChild(li);
             });
@@ -155,32 +194,41 @@
             if (!codes.length) return;
             
             const exportDate = new Date().toLocaleString();
-            const header = `ОТЧЕТ СКАНЕРА (SofrinoKBT)\nДата выгрузки: ${exportDate}\n-------------------\n`;
-            const text = codes.map(c => `${c.text} (${c.date} ${c.time})`).join('\n');
+            const header = `ОТЧЕТ SOFRINOKBT\nСформирован: ${exportDate}\n-------------------\n`;
+            const text = codes.map(c => `${c.text} [${c.date} ${c.time}]`).join('\n');
             
             navigator.clipboard.writeText(header + text).then(() => {
-                alert("Список с датами скопирован!");
+                alert("Данные скопированы!");
             });
         }
 
         function clearList() {
-            if (confirm("Удалить все данные?")) {
+            if (confirm("Внимание! Весь список будет удален. Продолжить?")) {
                 codes = [];
-                localStorage.removeItem('wb_codes_v4');
+                localStorage.removeItem('wb_codes_v5');
                 renderList();
             }
         }
 
         function checkTorch() {
             const track = html5QrCode.getRunningTrackCapabilities();
-            if (track && track.torch) document.getElementById('torch-button').style.display = 'block';
+            if (track && track.torch) {
+                document.getElementById('torch-button').style.display = 'block';
+            }
         }
 
         async function toggleTorch() {
             const btn = document.getElementById('torch-button');
-            const isOff = btn.innerText.includes("ФОНАРИК");
-            await html5QrCode.applyVideoConstraints({ advanced: [{ torch: isOff }] });
-            btn.innerText = isOff ? "❌ ВЫКЛЮЧИТЬ" : "🔦 ФОНАРИК";
+            const isOn = btn.innerText.includes("ВЫКЛ");
+            
+            try {
+                await html5QrCode.applyVideoConstraints({
+                    advanced: [{ torch: !isOn }]
+                });
+                btn.innerText = !isOn ? "❌ ВЫКЛЮЧИТЬ" : "🔦 ФОНАРИК";
+            } catch (e) {
+                console.error("Фонарик не поддерживается на этом устройстве");
+            }
         }
     </script>
 </body>
