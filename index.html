@@ -38,19 +38,19 @@
             background: #050505; 
         }
 
-        /* Лазерная линия */
+        /* Лазерная линия - стала прозрачнее и медленнее */
         .scanner-laser {
             position: absolute;
             top: 25%;
             left: 15%;
             width: 70%;
             height: 2px;
-            background: var(--accent-green);
-            box-shadow: 0 0 15px 2px var(--accent-green);
+            background: rgba(46, 204, 113, 0.2); /* Снижена непрозрачность */
+            box-shadow: 0 0 8px 1px rgba(46, 204, 113, 0.2); /* Мягкое свечение */
             z-index: 10;
             display: none;
-            pointer-events: none; /* Чтобы лазер не перекрывал фокус камеры */
-            animation: scanning 2s infinite ease-in-out;
+            pointer-events: none;
+            animation: scanning 3.5s infinite ease-in-out; /* Увеличено время цикла */
         }
 
         @keyframes scanning {
@@ -63,7 +63,7 @@
         #flash-overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(46, 204, 113, 0.35); /* Полупрозрачный зеленый */
+            background-color: rgba(46, 204, 113, 0.35);
             z-index: 9999;
             pointer-events: none;
             opacity: 0;
@@ -116,7 +116,6 @@
 </head>
 <body>
     <div id="flash-overlay"></div>
-    
     <div id="status-overlay">⚠️ УЖЕ В СПИСКЕ</div>
 
     <div class="scanner-wrapper">
@@ -142,7 +141,7 @@
     <div class="footer">Developed by D. Martinkevich for SofrinoKBT</div>
 
     <script>
-        let codes = JSON.parse(localStorage.getItem('wb_codes_v8') || '[]');
+        let codes = JSON.parse(localStorage.getItem('wb_codes_v9') || '[]');
         let html5QrCode = null;
         let lastScanTime = 0;
         const SCAN_DELAY = 2200; 
@@ -155,7 +154,6 @@
             setTimeout(() => { el.style.display = 'none'; }, 1500);
         }
 
-        // Функция зеленой вспышки экрана
         function triggerVisualFeedback() {
             const flash = document.getElementById('flash-overlay');
             flash.classList.add('flash-active');
@@ -168,8 +166,9 @@
             
             const config = {
                 fps: 25,
-                qrbox: 250, // Только одно значение делает рамку строгим квадратом
-                aspectRatio: 1.0
+                qrbox: 250, 
+                aspectRatio: 1.0,
+                experimentalFeatures: { useBarCodeDetectorIfSupported: true } // Аппаратное ускорение
             };
 
             try {
@@ -193,16 +192,16 @@
                             text: processed, 
                             time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
                         });
-                        localStorage.setItem('wb_codes_v8', JSON.stringify(codes));
+                        localStorage.setItem('wb_codes_v9', JSON.stringify(codes));
                         
-                        triggerVisualFeedback(); // Запускаем вспышку
+                        triggerVisualFeedback();
                         renderList();
                         new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(()=>{});
                         lastScanTime = now;
                     }
                 );
                 document.getElementById('start-btn').style.display = 'none';
-                document.getElementById('laser').style.display = 'block'; // Показываем лазер
+                document.getElementById('laser').style.display = 'block';
                 setTimeout(checkTorch, 1000);
             } catch (err) {
                 alert("Ошибка камеры. Убедитесь, что сайт открыт через HTTPS.");
@@ -229,7 +228,7 @@
         function clearList() {
             if (confirm("Удалить все данные?")) {
                 codes = [];
-                localStorage.removeItem('wb_codes_v8');
+                localStorage.removeItem('wb_codes_v9');
                 renderList();
             }
         }
