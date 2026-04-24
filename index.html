@@ -22,6 +22,7 @@
             -webkit-tap-highlight-color: transparent;
         }
         
+        /* Контейнер сканера */
         .scanner-wrapper {
             position: relative;
             width: 100%;
@@ -36,7 +37,7 @@
 
         #reader { width: 100%; }
 
-        /* Синий лазер */
+        /* Синий лазерный луч */
         .scanner-laser {
             position: absolute;
             top: 25%;
@@ -57,7 +58,7 @@
             100% { top: 25%; }
         }
 
-        /* Обновленное уведомление "УЖЕ В СПИСКЕ" */
+        /* Уведомление о дубликате (Глассморфизм) */
         #status-overlay {
             position: fixed;
             top: 40%;
@@ -75,13 +76,12 @@
             z-index: 10000;
             display: none;
             text-align: center;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.8), 0 0 20px rgba(255, 150, 0, 0.2);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.8), 0 0 20px rgba(255, 150, 0, 0.15);
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            letter-spacing: 1px;
         }
         #status-overlay.active { display: block; transform: translate(-50%, -50%) scale(1); }
 
-        /* Кнопки с градиентом */
+        /* Стили кнопок */
         @keyframes gradientShift {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
@@ -104,26 +104,17 @@
             color: #fff;
             background-size: 200% 200%;
             animation: gradientShift 5s infinite ease;
+            letter-spacing: 1px;
         }
 
         button:active { transform: scale(0.96); filter: brightness(1.2); }
 
-        .btn-start { 
-            background-image: linear-gradient(135deg, #6e2796, #a64dff, #6e2796);
-            box-shadow: 0 8px 25px rgba(110, 39, 150, 0.3);
-        }
+        .btn-start { background-image: linear-gradient(135deg, #6e2796, #a64dff, #6e2796); box-shadow: 0 8px 25px rgba(110, 39, 150, 0.3); }
+        .btn-copy { background-image: linear-gradient(135deg, #1e8449, #2ecc71, #1e8449); box-shadow: 0 8px 25px rgba(30, 132, 73, 0.3); }
+        .btn-clear { background: rgba(255, 255, 255, 0.05); color: #888; animation: none; }
+        .btn-torch { background: rgba(255, 255, 255, 0.1); animation: none; display: none; }
 
-        .btn-copy { 
-            background-image: linear-gradient(135deg, #1e8449, #2ecc71, #1e8449);
-            box-shadow: 0 8px 25px rgba(30, 132, 73, 0.3);
-        }
-
-        .btn-clear { 
-            background: rgba(255, 255, 255, 0.05);
-            color: #888;
-            animation: none; 
-        }
-
+        /* Список кодов */
         #list-container { 
             margin-top: 25px; 
             background: rgba(255, 255, 255, 0.03); 
@@ -157,7 +148,7 @@
 
     <div class="controls">
         <button id="start-btn" class="btn-start" onclick="initScanner()">🚀 ЗАПУСТИТЬ СКАНЕР</button>
-        <button id="torch-button" style="display:none; background: rgba(255,255,255,0.1);" onclick="toggleTorch()">🔦 ФОНАРИК</button>
+        <button id="torch-button" class="btn-torch" onclick="toggleTorch()">🔦 ФОНАРИК</button>
         <button class="btn-copy" onclick="copyToClipboard()">📋 КОПИРОВАТЬ СПИСОК</button>
         <button class="btn-clear" onclick="clearList()">🗑️ ОЧИСТИТЬ СПИСОК</button>
     </div>
@@ -173,7 +164,7 @@
     <div class="footer">DEVELOPED BY D. MARTINKEVICH FOR SOFRINOKBT</div>
 
     <script>
-        const STORAGE_KEY = 'wb_scanner_v12_stable';
+        const STORAGE_KEY = 'wb_scanner_v13_stable';
         let codes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
         let html5QrCode = null;
         let lastScanTime = 0;
@@ -205,9 +196,12 @@
                     const now = Date.now();
                     if (now - lastScanTime < SCAN_DELAY) return;
 
-                    let processed = text.trim().match(/\d{10,}/)?.[0] || text.trim();
+                    // Нормализация: убираем пробелы и ищем только цифры
+                    let cleaned = text.trim();
+                    let match = cleaned.match(/\d{10,}/);
+                    let processed = match ? match[0] : cleaned;
 
-                    // Строгая проверка на дубликаты
+                    // Проверка на дубликаты
                     if (codes.some(c => c.text === processed)) {
                         showDuplicateWarning();
                         lastScanTime = now;
@@ -224,10 +218,13 @@
                     new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(()=>{});
                     lastScanTime = now;
                 });
+
                 document.getElementById('start-btn').style.display = 'none';
                 document.getElementById('laser').style.display = 'block';
+                
+                // Проверка фонарика через 1 сек после старта
                 setTimeout(checkTorch, 1000);
-            } catch (err) { alert(err); }
+            } catch (err) { alert("Ошибка камеры: " + err); }
         }
 
         function renderList() {
@@ -254,16 +251,28 @@
             }
         }
 
+        // Исправленная логика фонарика для Samsung/Android
         function checkTorch() {
+            const isAndroid = /Android/i.test(navigator.userAgent);
             const track = html5QrCode.getRunningTrackCapabilities();
-            if (track?.torch) document.getElementById('torch-button').style.display = 'block';
+            
+            // Если система подтвердила фонарик ИЛИ это Android (наглый режим для Samsung)
+            if (track?.torch || isAndroid) {
+                document.getElementById('torch-button').style.display = 'block';
+            }
         }
 
         async function toggleTorch() {
             const btn = document.getElementById('torch-button');
             const isOff = btn.innerText.includes("ФОНАРИК");
-            await html5QrCode.applyVideoConstraints({ advanced: [{ torch: isOff }] });
-            btn.innerText = isOff ? "❌ ВЫКЛЮЧИТЬ" : "🔦 ФОНАРИК";
+            try {
+                // Пытаемся применить команду напрямую
+                await html5QrCode.applyVideoConstraints({ advanced: [{ torch: isOff }] });
+                btn.innerText = isOff ? "❌ ВЫКЛЮЧИТЬ" : "🔦 ФОНАРИК";
+                btn.style.background = isOff ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.1)";
+            } catch(e) {
+                alert("Фонарик на этом устройстве недоступен для браузера.");
+            }
         }
     </script>
 </body>
