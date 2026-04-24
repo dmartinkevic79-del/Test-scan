@@ -109,7 +109,6 @@
         .btn-copy { background-image: linear-gradient(135deg, #1e8449, #2ecc71, #1e8449); box-shadow: 0 8px 25px rgba(30, 132, 73, 0.3); }
         .btn-clear { background: rgba(255, 255, 255, 0.05); color: #888; animation: none; }
         
-        /* Новая стилистика фонарика (теплый светящийся градиент) */
         .btn-torch { 
             background-image: linear-gradient(135deg, rgba(255, 213, 79, 0.2), rgba(255, 179, 0, 0.05));
             border-color: rgba(255, 213, 79, 0.3);
@@ -176,7 +175,7 @@
     <div class="footer">DEVELOPED BY D. MARTINKEVICH FOR SOFRINOKBT</div>
 
     <script>
-        const STORAGE_KEY = 'wb_scanner_v14_stable';
+        const STORAGE_KEY = 'wb_scanner_v15_stable';
         let codes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
         let html5QrCode = null;
         let lastScanTime = 0;
@@ -220,7 +219,7 @@
 
                     codes.push({ 
                         text: processed, 
-                        time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) 
+                        time: new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'}) 
                     });
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(codes));
                     
@@ -250,9 +249,22 @@
             document.getElementById('count').innerText = codes.length;
         }
 
+        // --- ОБНОВЛЕННАЯ ФУНКЦИЯ КОПИРОВАНИЯ ---
         function copyToClipboard() {
             if (!codes.length) return;
-            navigator.clipboard.writeText(codes.map(c => c.text).join('\n')).then(() => alert("Скопировано!"));
+            
+            // Получаем текущую дату
+            const dateStr = new Date().toLocaleDateString('ru-RU');
+            
+            // Формируем красивый заголовок
+            let report = `ОТЧЕТ ЗА ${dateStr}\n`;
+            report += `Всего кодов: ${codes.length}\n`;
+            report += `------------------------\n`;
+            
+            // Добавляем коды вместе со временем (через тире)
+            report += codes.map(c => `${c.text} - ${c.time}`).join('\n');
+            
+            navigator.clipboard.writeText(report).then(() => alert("Отчет с датой и временем скопирован!"));
         }
 
         function clearList() {
@@ -277,7 +289,6 @@
             try {
                 await html5QrCode.applyVideoConstraints({ advanced: [{ torch: isOff }] });
                 btn.innerText = isOff ? "❌ ВЫКЛЮЧИТЬ" : "🔦 ФОНАРИК";
-                // Добавляем яркости кнопке, если фонарик включен
                 btn.style.boxShadow = isOff ? "0 8px 35px rgba(255, 213, 79, 0.4)" : "";
             } catch(e) {
                 alert("Увы, прошивка вашего устройства аппаратно блокирует доступ к фонарику для браузера.");
