@@ -8,10 +8,10 @@
     <style>
         :root {
             --bg-color: #000;
+            --accent-blue: #00d4ff;
             --accent-green: #2ecc71;
             --text-main: #ffffff;
-            --glass-bg: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.12);
         }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
@@ -33,19 +33,20 @@
             overflow: hidden;
             border: 1px solid var(--glass-border);
             background: #050505;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
         }
 
         #reader { width: 100%; }
 
-        /* Прозрачный медленный лазер */
+        /* Синий лазер — стал заметнее */
         .scanner-laser {
             position: absolute;
             top: 25%;
             left: 15%;
             width: 70%;
-            height: 1px;
-            background: rgba(46, 204, 113, 0.15); 
-            box-shadow: 0 0 10px 1px rgba(46, 204, 113, 0.2); 
+            height: 2px;
+            background: rgba(0, 212, 255, 0.4); 
+            box-shadow: 0 0 12px 2px rgba(0, 212, 255, 0.5); 
             z-index: 10;
             display: none;
             pointer-events: none;
@@ -58,95 +59,98 @@
             100% { top: 25%; }
         }
 
-        /* Глассморфизм для кнопок */
+        /* Анимация переливающегося градиента */
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
         .controls { display: flex; flex-direction: column; gap: 16px; margin-top: 25px; }
         
         button { 
             padding: 20px; 
             border-radius: 20px; 
-            font-weight: 700; 
+            font-weight: 800; 
             cursor: pointer; 
             font-size: 15px; 
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            transition: all 0.3s ease; 
             text-transform: uppercase; 
             position: relative;
             border: 1px solid var(--glass-border);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
             color: #fff;
-            letter-spacing: 0.5px;
+            letter-spacing: 1px;
+            background-size: 200% 200%;
+            animation: gradientShift 5s infinite ease;
         }
 
-        button:active { transform: scale(0.96); opacity: 0.8; }
+        button:active { transform: scale(0.96); filter: brightness(1.2); }
 
-        /* Кнопка Старт — яркий градиент */
+        /* Градиенты с анимацией */
         .btn-start { 
-            background: linear-gradient(135deg, rgba(155, 65, 204, 0.4), rgba(110, 39, 150, 0.2));
-            border-color: rgba(155, 65, 204, 0.4);
-            box-shadow: 0 8px 32px 0 rgba(155, 65, 204, 0.1);
+            background-image: linear-gradient(135deg, #6e2796, #a64dff, #6e2796);
+            border-color: rgba(166, 77, 255, 0.4);
+            box-shadow: 0 8px 25px rgba(110, 39, 150, 0.3);
         }
 
-        /* Кнопка Копировать — зеленый глассморфизм */
         .btn-copy { 
-            background: linear-gradient(135deg, rgba(46, 204, 113, 0.2), rgba(39, 174, 96, 0.05));
-            border-color: rgba(46, 204, 113, 0.3);
-            box-shadow: 0 8px 32px 0 rgba(46, 204, 113, 0.1);
+            background-image: linear-gradient(135deg, #1e8449, #2ecc71, #1e8449);
+            border-color: rgba(46, 204, 113, 0.4);
+            box-shadow: 0 8px 25px rgba(30, 132, 73, 0.3);
         }
 
-        /* Кнопка Очистить — минималистичный гласс */
         .btn-clear { 
-            background: rgba(255, 255, 255, 0.03);
-            border-color: rgba(255, 255, 255, 0.05);
-            color: #666;
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.1);
+            color: #888;
             margin-top: 5px;
+            animation: none; /* Для очистки статика лучше */
         }
 
-        .btn-torch { background: rgba(255, 255, 255, 0.08); display: none; }
+        .btn-torch { 
+            background: rgba(255, 255, 255, 0.1); 
+            display: none; 
+            animation: none;
+        }
 
         /* Список */
         #list-container { 
             margin-top: 25px; 
-            background: rgba(255, 255, 255, 0.02); 
+            background: rgba(255, 255, 255, 0.03); 
             border-radius: 28px; 
             padding: 24px; 
             border: 1px solid var(--glass-border);
-            backdrop-filter: blur(5px);
         }
 
         .status-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px; }
-        .count-value { color: var(--accent-green); font-size: 32px; font-weight: 900; text-shadow: 0 0 15px rgba(46, 204, 113, 0.3); }
+        .count-value { color: var(--accent-green); font-size: 34px; font-weight: 900; text-shadow: 0 0 15px rgba(46, 204, 113, 0.4); }
         
         ul { list-style: none; padding: 0; margin-top: 15px; }
-        li { padding: 16px 0; border-top: 1px solid rgba(255,255,255,0.03); display: flex; justify-content: space-between; align-items: center; }
-        .code-text { font-size: 17px; color: #ddd; letter-spacing: 0.5px; }
-        .time-text { font-size: 12px; color: #444; }
+        li { padding: 18px 0; border-top: 1px solid rgba(255,255,255,0.03); display: flex; justify-content: space-between; align-items: center; }
+        .code-text { font-size: 18px; font-weight: 600; color: #eee; }
+        .time-text { font-size: 12px; color: #555; }
 
-        /* Вспышка и Уведомления */
+        /* Вспышка */
         #flash-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(46, 204, 113, 0.25);
+            background-color: rgba(0, 212, 255, 0.2); /* Вспышка теперь тоже в цвет лазера */
             z-index: 9999; pointer-events: none; opacity: 0; transition: opacity 0.1s;
         }
         .flash-active { opacity: 1 !important; }
 
-        #status-overlay {
-            position: fixed; top: 25%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(241, 196, 15, 0.9);
-            backdrop-filter: blur(10px);
-            color: #000; padding: 16px 32px; border-radius: 50px;
-            font-weight: 900; font-size: 16px; z-index: 10000; display: none;
-        }
-
         .footer { 
-            text-align: center; font-size: 10px; color: #555; 
-            margin: 40px 0 20px 0; text-transform: uppercase; 
-            letter-spacing: 2px; font-weight: 600;
+            text-align: center; font-size: 11px; color: #aaa; /* Сделал еще читаемее */
+            margin: 45px 0 25px 0; text-transform: uppercase; 
+            letter-spacing: 2px; font-weight: 700;
         }
     </style>
 </head>
 <body>
     <div id="flash-overlay"></div>
-    <div id="status-overlay">⚠️ УЖЕ В СПИСКЕ</div>
+    
+    <div id="status-overlay" style="position: fixed; top: 25%; left: 50%; transform: translate(-50%, -50%); background: #f1c40f; color: #000; padding: 16px 32px; border-radius: 50px; font-weight: 900; z-index: 10000; display: none;">⚠️ УЖЕ В СПИСКЕ</div>
 
     <div class="scanner-wrapper">
         <div id="reader"></div>
@@ -162,122 +166,4 @@
 
     <div id="list-container">
         <div class="status-bar">
-            <span style="color: #444; font-weight: 800; font-size: 13px;">СЧИТАНО ОБЪЕКТОВ</span>
-            <span id="count" class="count-value">0</span>
-        </div>
-        <ul id="scanned-codes"></ul>
-    </div>
-
-    <div class="footer">DEVELOPED BY D. MARTINKEVICH FOR SOFRINOKBT</div>
-
-    <script>
-        let codes = JSON.parse(localStorage.getItem('wb_codes_v10') || '[]');
-        let html5QrCode = null;
-        let lastScanTime = 0;
-        const SCAN_DELAY = 2200; 
-
-        window.onload = () => renderList();
-
-        function showDuplicateWarning() {
-            const el = document.getElementById('status-overlay');
-            el.style.display = 'block';
-            setTimeout(() => { el.style.display = 'none'; }, 1500);
-        }
-
-        function triggerVisualFeedback() {
-            const flash = document.getElementById('flash-overlay');
-            flash.classList.add('flash-active');
-            setTimeout(() => { flash.classList.remove('flash-active'); }, 150);
-        }
-
-        async function initScanner() {
-            if (html5QrCode) { try { await html5QrCode.stop(); } catch(e) {} }
-            html5QrCode = new Html5Qrcode("reader");
-            
-            const config = {
-                fps: 25,
-                qrbox: 250, // Строгий квадрат
-                aspectRatio: 1.0,
-                experimentalFeatures: { useBarCodeDetectorIfSupported: true }
-            };
-
-            try {
-                await html5QrCode.start(
-                    { facingMode: "environment" }, 
-                    config, 
-                    (text) => {
-                        const now = Date.now();
-                        if (now - lastScanTime < SCAN_DELAY) return;
-
-                        let match = text.match(/\d{10,}/);
-                        let processed = match ? match[0] : text;
-
-                        if (codes.some(c => c.text === processed)) {
-                            showDuplicateWarning();
-                            lastScanTime = now;
-                            return;
-                        }
-
-                        codes.push({ 
-                            text: processed, 
-                            time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
-                        });
-                        localStorage.setItem('wb_codes_v10', JSON.stringify(codes));
-                        
-                        triggerVisualFeedback();
-                        renderList();
-                        new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(()=>{});
-                        lastScanTime = now;
-                    }
-                );
-                document.getElementById('start-btn').style.display = 'none';
-                document.getElementById('laser').style.display = 'block';
-                setTimeout(checkTorch, 1000);
-            } catch (err) {
-                alert("Камера недоступна. Убедитесь, что используется HTTPS.");
-            }
-        }
-
-        function renderList() {
-            const list = document.getElementById('scanned-codes');
-            list.innerHTML = '';
-            [...codes].reverse().forEach(item => {
-                const li = document.createElement('li');
-                li.innerHTML = `<span class="code-text">${item.text}</span><span class="time-text">${item.time}</span>`;
-                list.appendChild(li);
-            });
-            document.getElementById('count').innerText = codes.length;
-        }
-
-        function copyToClipboard() {
-            if (!codes.length) return;
-            const body = codes.map(c => c.text).join('\n');
-            navigator.clipboard.writeText(body).then(() => { alert("Скопировано!"); });
-        }
-
-        function clearList() {
-            if (confirm("Удалить все записи?")) {
-                codes = [];
-                localStorage.removeItem('wb_codes_v10');
-                renderList();
-            }
-        }
-
-        function checkTorch() {
-            try {
-                const track = html5QrCode.getRunningTrackCapabilities();
-                if (track && track.torch) document.getElementById('torch-button').style.display = 'block';
-            } catch(e) {}
-        }
-
-        async function toggleTorch() {
-            const btn = document.getElementById('torch-button');
-            const isOff = btn.innerText.includes("ФОНАРИК");
-            try {
-                await html5QrCode.applyVideoConstraints({ advanced: [{ torch: isOff }] });
-                btn.innerText = isOff ? "❌ ВЫКЛЮЧИТЬ" : "🔦 ФОНАРИК";
-            } catch(e) {}
-        }
-    </script>
-</body>
-</html>
+            <span style="color: #666; font-weight: 800; font-size: 12px;">ОБРАБОТАНО КО
