@@ -38,7 +38,7 @@
 
         #reader { width: 100%; }
 
-        /* Синий лазер — стал заметнее */
+        /* Синий лазер */
         .scanner-laser {
             position: absolute;
             top: 25%;
@@ -59,7 +59,6 @@
             100% { top: 25%; }
         }
 
-        /* Анимация переливающегося градиента */
         @keyframes gradientShift {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
@@ -88,7 +87,6 @@
 
         button:active { transform: scale(0.96); filter: brightness(1.2); }
 
-        /* Градиенты с анимацией */
         .btn-start { 
             background-image: linear-gradient(135deg, #6e2796, #a64dff, #6e2796);
             border-color: rgba(166, 77, 255, 0.4);
@@ -106,7 +104,7 @@
             border-color: rgba(255, 255, 255, 0.1);
             color: #888;
             margin-top: 5px;
-            animation: none; /* Для очистки статика лучше */
+            animation: none; 
         }
 
         .btn-torch { 
@@ -115,7 +113,6 @@
             animation: none;
         }
 
-        /* Список */
         #list-container { 
             margin-top: 25px; 
             background: rgba(255, 255, 255, 0.03); 
@@ -135,13 +132,13 @@
         /* Вспышка */
         #flash-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 212, 255, 0.2); /* Вспышка теперь тоже в цвет лазера */
+            background-color: rgba(0, 212, 255, 0.2); 
             z-index: 9999; pointer-events: none; opacity: 0; transition: opacity 0.1s;
         }
         .flash-active { opacity: 1 !important; }
 
         .footer { 
-            text-align: center; font-size: 11px; color: #aaa; /* Сделал еще читаемее */
+            text-align: center; font-size: 11px; color: #aaa; 
             margin: 45px 0 25px 0; text-transform: uppercase; 
             letter-spacing: 2px; font-weight: 700;
         }
@@ -166,4 +163,117 @@
 
     <div id="list-container">
         <div class="status-bar">
-            <span style="color: #666; font-weight: 800; font-size: 12px;">ОБРАБОТАНО КО
+            <span style="color: #666; font-weight: 800; font-size: 12px;">ОБРАБОТАНО КОДОВ</span>
+            <span id="count" class="count-value">0</span>
+        </div>
+        <ul id="scanned-codes"></ul>
+    </div>
+
+    <div class="footer">DEVELOPED BY D. MARTINKEVICH FOR SOFRINOKBT</div>
+
+    <script>
+        let codes = JSON.parse(localStorage.getItem('wb_codes_v12') || '[]');
+        let html5QrCode = null;
+        let lastScanTime = 0;
+        const SCAN_DELAY = 2200; 
+
+        window.onload = () => renderList();
+
+        function triggerVisualFeedback() {
+            const flash = document.getElementById('flash-overlay');
+            flash.classList.add('flash-active');
+            setTimeout(() => { flash.classList.remove('flash-active'); }, 150);
+        }
+
+        async function initScanner() {
+            if (html5QrCode) { try { await html5QrCode.stop(); } catch(e) {} }
+            html5QrCode = new Html5Qrcode("reader");
+            
+            const config = {
+                fps: 25,
+                // Динамическое вычисление размера рамки (75% от ширины экрана, чтобы гарантированно влезло)
+                qrbox: function(viewfinderWidth, viewfinderHeight) {
+                    let boxSize = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.75);
+                    return { width: boxSize, height: boxSize };
+                },
+                aspectRatio: 1.0
+            };
+
+            try {
+                await html5QrCode.start(
+                    { facingMode: "environment" }, 
+                    config, 
+                    (text) => {
+                        const now = Date.now();
+                        if (now - lastScanTime < SCAN_DELAY) return;
+
+                        let match = text.match(/\d{10,}/);
+                        let processed = match ? match[0] : text;
+
+                        if (codes.some(c => c.text === processed)) {
+                            document.getElementById('status-overlay').style.display = 'block';
+                            setTimeout(() => { document.getElementById('status-overlay').style.display = 'none'; }, 1500);
+                            lastScanTime = now;
+                            return;
+                        }
+
+                        codes.push({ text: processed, time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) });
+                        localStorage.setItem('wb_codes_v12', JSON.stringify(codes));
+                        
+                        triggerVisualFeedback();
+                        renderList();
+                        new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(()=>{});
+                        lastScanTime = now;
+                    }
+                );
+                document.getElementById('start-btn').style.display = 'none';
+                document.getElementById('laser').style.display = 'block';
+                setTimeout(checkTorch, 1000);
+            } catch (err) {
+                alert("Ошибка запуска сканера: " + err); // Теперь покажет конкретную ошибку, если она есть
+            }
+        }
+
+        function renderList() {
+            const list = document.getElementById('scanned-codes');
+            list.innerHTML = '';
+            [...codes].reverse().forEach(item => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span class="code-text">${item.text}</span><span class="time-text">${item.time}</span>`;
+                list.appendChild(li);
+            });
+            document.getElementById('count').innerText = codes.length;
+        }
+
+        function copyToClipboard() {
+            if (!codes.length) return;
+            const body = codes.map(c => c.text).join('\n');
+            navigator.clipboard.writeText(body).then(() => { alert("Данные в буфере!"); });
+        }
+
+        function clearList() {
+            if (confirm("Удалить весь список?")) {
+                codes = [];
+                localStorage.removeItem('wb_codes_v12');
+                renderList();
+            }
+        }
+
+        function checkTorch() {
+            try {
+                const track = html5QrCode.getRunningTrackCapabilities();
+                if (track && track.torch) document.getElementById('torch-button').style.display = 'block';
+            } catch(e) {}
+        }
+
+        async function toggleTorch() {
+            const btn = document.getElementById('torch-button');
+            const isOff = btn.innerText.includes("ФОНАРИК");
+            try {
+                await html5QrCode.applyVideoConstraints({ advanced: [{ torch: isOff }] });
+                btn.innerText = isOff ? "❌ ВЫКЛЮЧИТЬ" : "🔦 ФОНАРИК";
+            } catch(e) {}
+        }
+    </script>
+</body>
+</html>
