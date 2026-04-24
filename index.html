@@ -22,7 +22,6 @@
             -webkit-tap-highlight-color: transparent;
         }
         
-        /* Контейнер сканера */
         .scanner-wrapper {
             position: relative;
             width: 100%;
@@ -37,7 +36,6 @@
 
         #reader { width: 100%; }
 
-        /* Синий лазерный луч */
         .scanner-laser {
             position: absolute;
             top: 25%;
@@ -58,7 +56,6 @@
             100% { top: 25%; }
         }
 
-        /* Уведомление о дубликате (Глассморфизм) */
         #status-overlay {
             position: fixed;
             top: 40%;
@@ -81,7 +78,6 @@
         }
         #status-overlay.active { display: block; transform: translate(-50%, -50%) scale(1); }
 
-        /* Стили кнопок */
         @keyframes gradientShift {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
@@ -112,9 +108,17 @@
         .btn-start { background-image: linear-gradient(135deg, #6e2796, #a64dff, #6e2796); box-shadow: 0 8px 25px rgba(110, 39, 150, 0.3); }
         .btn-copy { background-image: linear-gradient(135deg, #1e8449, #2ecc71, #1e8449); box-shadow: 0 8px 25px rgba(30, 132, 73, 0.3); }
         .btn-clear { background: rgba(255, 255, 255, 0.05); color: #888; animation: none; }
-        .btn-torch { background: rgba(255, 255, 255, 0.1); animation: none; display: none; }
+        
+        /* Новая стилистика фонарика (теплый светящийся градиент) */
+        .btn-torch { 
+            background-image: linear-gradient(135deg, rgba(255, 213, 79, 0.2), rgba(255, 179, 0, 0.05));
+            border-color: rgba(255, 213, 79, 0.3);
+            box-shadow: 0 8px 25px rgba(255, 213, 79, 0.15);
+            color: #ffd54f;
+            animation: none; 
+            display: none; 
+        }
 
-        /* Список кодов */
         #list-container { 
             margin-top: 25px; 
             background: rgba(255, 255, 255, 0.03); 
@@ -136,9 +140,17 @@
             margin: 45px 0 25px 0; text-transform: uppercase; 
             letter-spacing: 2px; font-weight: 700;
         }
+
+        #flash-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 212, 255, 0.2); 
+            z-index: 9999; pointer-events: none; opacity: 0; transition: opacity 0.1s;
+        }
+        .flash-active { opacity: 1 !important; }
     </style>
 </head>
 <body>
+    <div id="flash-overlay"></div>
     <div id="status-overlay">⚠️ УЖЕ В СПИСКЕ</div>
 
     <div class="scanner-wrapper">
@@ -164,7 +176,7 @@
     <div class="footer">DEVELOPED BY D. MARTINKEVICH FOR SOFRINOKBT</div>
 
     <script>
-        const STORAGE_KEY = 'wb_scanner_v13_stable';
+        const STORAGE_KEY = 'wb_scanner_v14_stable';
         let codes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
         let html5QrCode = null;
         let lastScanTime = 0;
@@ -196,12 +208,10 @@
                     const now = Date.now();
                     if (now - lastScanTime < SCAN_DELAY) return;
 
-                    // Нормализация: убираем пробелы и ищем только цифры
                     let cleaned = text.trim();
                     let match = cleaned.match(/\d{10,}/);
                     let processed = match ? match[0] : cleaned;
 
-                    // Проверка на дубликаты
                     if (codes.some(c => c.text === processed)) {
                         showDuplicateWarning();
                         lastScanTime = now;
@@ -214,6 +224,10 @@
                     });
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(codes));
                     
+                    const flash = document.getElementById('flash-overlay');
+                    flash.classList.add('flash-active');
+                    setTimeout(() => { flash.classList.remove('flash-active'); }, 150);
+
                     renderList();
                     new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(()=>{});
                     lastScanTime = now;
@@ -221,8 +235,6 @@
 
                 document.getElementById('start-btn').style.display = 'none';
                 document.getElementById('laser').style.display = 'block';
-                
-                // Проверка фонарика через 1 сек после старта
                 setTimeout(checkTorch, 1000);
             } catch (err) { alert("Ошибка камеры: " + err); }
         }
@@ -251,12 +263,9 @@
             }
         }
 
-        // Исправленная логика фонарика для Samsung/Android
         function checkTorch() {
             const isAndroid = /Android/i.test(navigator.userAgent);
             const track = html5QrCode.getRunningTrackCapabilities();
-            
-            // Если система подтвердила фонарик ИЛИ это Android (наглый режим для Samsung)
             if (track?.torch || isAndroid) {
                 document.getElementById('torch-button').style.display = 'block';
             }
@@ -266,12 +275,12 @@
             const btn = document.getElementById('torch-button');
             const isOff = btn.innerText.includes("ФОНАРИК");
             try {
-                // Пытаемся применить команду напрямую
                 await html5QrCode.applyVideoConstraints({ advanced: [{ torch: isOff }] });
                 btn.innerText = isOff ? "❌ ВЫКЛЮЧИТЬ" : "🔦 ФОНАРИК";
-                btn.style.background = isOff ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.1)";
+                // Добавляем яркости кнопке, если фонарик включен
+                btn.style.boxShadow = isOff ? "0 8px 35px rgba(255, 213, 79, 0.4)" : "";
             } catch(e) {
-                alert("Фонарик на этом устройстве недоступен для браузера.");
+                alert("Увы, прошивка вашего устройства аппаратно блокирует доступ к фонарику для браузера.");
             }
         }
     </script>
