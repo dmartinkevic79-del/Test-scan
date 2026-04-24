@@ -10,14 +10,12 @@
             --bg-color: #000;
             --accent-blue: #00d4ff;
             --accent-green: #2ecc71;
-            --accent-warning: rgba(255, 165, 0, 0.8);
-            --text-main: #ffffff;
             --glass-border: rgba(255, 255, 255, 0.12);
         }
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
             background: var(--bg-color); 
-            color: var(--text-main); 
+            color: #fff; 
             margin: 0; 
             padding: 20px; 
             user-select: none;
@@ -38,7 +36,7 @@
 
         #reader { width: 100%; }
 
-        /* Синий лазер — стал чуть плотнее */
+        /* Синий лазер */
         .scanner-laser {
             position: absolute;
             top: 25%;
@@ -59,7 +57,7 @@
             100% { top: 25%; }
         }
 
-        /* Уведомление "УЖЕ В СПИСКЕ" в стиле Глассморфизм */
+        /* Обновленное уведомление "УЖЕ В СПИСКЕ" */
         #status-overlay {
             position: fixed;
             top: 40%;
@@ -83,7 +81,7 @@
         }
         #status-overlay.active { display: block; transform: translate(-50%, -50%) scale(1); }
 
-        /* Анимированные кнопки */
+        /* Кнопки с градиентом */
         @keyframes gradientShift {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
@@ -100,7 +98,6 @@
             font-size: 15px; 
             transition: all 0.3s ease; 
             text-transform: uppercase; 
-            position: relative;
             border: 1px solid var(--glass-border);
             backdrop-filter: blur(15px);
             -webkit-backdrop-filter: blur(15px);
@@ -127,7 +124,6 @@
             animation: none; 
         }
 
-        /* Список */
         #list-container { 
             margin-top: 25px; 
             background: rgba(255, 255, 255, 0.03); 
@@ -144,13 +140,6 @@
         .code-text { font-size: 18px; font-weight: 600; color: #eee; }
         .time-text { font-size: 12px; color: #555; }
 
-        #flash-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 212, 255, 0.2); 
-            z-index: 9999; pointer-events: none; opacity: 0; transition: opacity 0.1s;
-        }
-        .flash-active { opacity: 1 !important; }
-
         .footer { 
             text-align: center; font-size: 11px; color: #aaa; 
             margin: 45px 0 25px 0; text-transform: uppercase; 
@@ -159,7 +148,6 @@
     </style>
 </head>
 <body>
-    <div id="flash-overlay"></div>
     <div id="status-overlay">⚠️ УЖЕ В СПИСКЕ</div>
 
     <div class="scanner-wrapper">
@@ -185,8 +173,7 @@
     <div class="footer">DEVELOPED BY D. MARTINKEVICH FOR SOFRINOKBT</div>
 
     <script>
-        // Используем единый ключ для стабильности
-        const STORAGE_KEY = 'wb_scanner_final_data';
+        const STORAGE_KEY = 'wb_scanner_v12_stable';
         let codes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
         let html5QrCode = null;
         let lastScanTime = 0;
@@ -200,69 +187,52 @@
             setTimeout(() => { el.classList.remove('active'); }, 2000);
         }
 
-        function triggerVisualFeedback() {
-            const flash = document.getElementById('flash-overlay');
-            flash.classList.add('flash-active');
-            setTimeout(() => { flash.classList.remove('flash-active'); }, 150);
-        }
-
         async function initScanner() {
             if (html5QrCode) { try { await html5QrCode.stop(); } catch(e) {} }
             html5QrCode = new Html5Qrcode("reader");
             
             const config = {
                 fps: 25,
-                qrbox: function(viewfinderWidth, viewfinderHeight) {
-                    let boxSize = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.75);
-                    return { width: boxSize, height: boxSize };
+                qrbox: (vw, vh) => {
+                    let s = Math.floor(Math.min(vw, vh) * 0.75);
+                    return { width: s, height: s };
                 },
                 aspectRatio: 1.0
             };
 
             try {
-                await html5QrCode.start(
-                    { facingMode: "environment" }, 
-                    config, 
-                    (text) => {
-                        const now = Date.now();
-                        if (now - lastScanTime < SCAN_DELAY) return;
+                await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+                    const now = Date.now();
+                    if (now - lastScanTime < SCAN_DELAY) return;
 
-                        // Очистка и нормализация текста
-                        let rawText = text.trim();
-                        let match = rawText.match(/\d{10,}/);
-                        let processed = match ? match[0] : rawText;
+                    let processed = text.trim().match(/\d{10,}/)?.[0] || text.trim();
 
-                        // Исправленная проверка дубликатов
-                        if (codes.some(c => c.text === processed)) {
-                            showDuplicateWarning();
-                            lastScanTime = now;
-                            return;
-                        }
-
-                        codes.push({ 
-                            text: processed, 
-                            time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) 
-                        });
-                        localStorage.setItem(STORAGE_KEY, JSON.stringify(codes));
-                        
-                        triggerVisualFeedback();
-                        renderList();
-                        new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(()=>{});
+                    // Строгая проверка на дубликаты
+                    if (codes.some(c => c.text === processed)) {
+                        showDuplicateWarning();
                         lastScanTime = now;
+                        return;
                     }
-                );
+
+                    codes.push({ 
+                        text: processed, 
+                        time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) 
+                    });
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(codes));
+                    
+                    renderList();
+                    new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(()=>{});
+                    lastScanTime = now;
+                });
                 document.getElementById('start-btn').style.display = 'none';
                 document.getElementById('laser').style.display = 'block';
                 setTimeout(checkTorch, 1000);
-            } catch (err) {
-                alert("Ошибка: " + err);
-            }
+            } catch (err) { alert(err); }
         }
 
         function renderList() {
             const list = document.getElementById('scanned-codes');
             list.innerHTML = '';
-            // Создаем копию и переворачиваем для отображения новых сверху
             [...codes].reverse().forEach(item => {
                 const li = document.createElement('li');
                 li.innerHTML = `<span class="code-text">${item.text}</span><span class="time-text">${item.time}</span>`;
@@ -273,12 +243,11 @@
 
         function copyToClipboard() {
             if (!codes.length) return;
-            const body = codes.map(c => c.text).join('\n');
-            navigator.clipboard.writeText(body).then(() => { alert("Скопировано в буфер!"); });
+            navigator.clipboard.writeText(codes.map(c => c.text).join('\n')).then(() => alert("Скопировано!"));
         }
 
         function clearList() {
-            if (confirm("Удалить весь список?")) {
+            if (confirm("Удалить всё?")) {
                 codes = [];
                 localStorage.removeItem(STORAGE_KEY);
                 renderList();
@@ -286,19 +255,15 @@
         }
 
         function checkTorch() {
-            try {
-                const track = html5QrCode.getRunningTrackCapabilities();
-                if (track && track.torch) document.getElementById('torch-button').style.display = 'block';
-            } catch(e) {}
+            const track = html5QrCode.getRunningTrackCapabilities();
+            if (track?.torch) document.getElementById('torch-button').style.display = 'block';
         }
 
         async function toggleTorch() {
             const btn = document.getElementById('torch-button');
             const isOff = btn.innerText.includes("ФОНАРИК");
-            try {
-                await html5QrCode.applyVideoConstraints({ advanced: [{ torch: isOff }] });
-                btn.innerText = isOff ? "❌ ВЫКЛЮЧИТЬ" : "🔦 ФОНАРИК";
-            } catch(e) {}
+            await html5QrCode.applyVideoConstraints({ advanced: [{ torch: isOff }] });
+            btn.innerText = isOff ? "❌ ВЫКЛЮЧИТЬ" : "🔦 ФОНАРИК";
         }
     </script>
 </body>
