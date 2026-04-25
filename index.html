@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0a0f16">
-    <title>Sklad Scanner Elite v8</title>
+    <title>Sklad Scanner Elite v8.1</title>
     
     <link rel="manifest" id="manifest-placeholder">
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -18,7 +18,8 @@
             --danger: #ff4d4d;
             --accent: #00d4ff;
             --text: #e0e6ed;
-            --qr-size: 280px;
+            /* Уменьшил рамку до 250px для лучшей совместимости с экранами */
+            --qr-size: 250px; 
         }
 
         body {
@@ -78,12 +79,13 @@
             color: #f59e0b; margin-bottom: 10px; display: none; margin-top: 0;
         }
 
+        /* Убрал aspect-ratio, теперь высоту контролирует сама библиотека */
         #reader-container { 
             position: relative; border-radius: 20px; overflow: hidden; 
-            background: #000; aspect-ratio: 1/1; 
+            background: #000;
         }
+        #reader { width: 100%; }
         
-        /* Оптимизированный лазер */
         .laser {
             position: absolute; 
             left: calc(50% - (var(--qr-size) / 2));
@@ -94,7 +96,6 @@
             z-index: 5; pointer-events: none;
             display: none;
             will-change: transform;
-            /* Вычисляем начальную точку: 50% высоты контейнера минус половина рамки */
             top: calc(50% - (var(--qr-size) / 2));
             animation: scan-optimized 3.5s linear infinite;
         }
@@ -140,7 +141,7 @@
 <div class="container">
     <div id="screenSetup">
         <div class="card">
-            <h2>Elite Scanner v8</h2>
+            <h2>Elite Scanner v8.1</h2>
             <textarea id="codesInput" placeholder="Список штрихкодов..."></textarea>
             <button class="btn-start" id="startBtn" onclick="startApp()">Запустить сканер</button>
             <button class="btn-clear" onclick="clearMemory()">Очистить всё</button>
@@ -150,7 +151,7 @@
     <div id="screenScanner">
         <button id="torchBtn" class="btn-torch" onclick="toggleTorch()">🔦 Фонарик</button>
         
-        <div class="card" style="padding: 0; overflow: hidden;">
+        <div class="card" style="padding: 0; border: none; background: transparent; box-shadow: none;">
             <div id="reader-container">
                 <div id="reader"></div>
                 <div id="laser" class="laser"></div>
@@ -185,6 +186,9 @@
     let isTorchOn = false;
     let isAppPaused = false;
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    const rootStyles = getComputedStyle(document.documentElement);
+    const qrSize = parseInt(rootStyles.getPropertyValue('--qr-size').trim());
 
     window.onload = () => {
         const savedInput = localStorage.getItem('codesInput');
@@ -192,7 +196,6 @@
         foundCodes = new Set(JSON.parse(localStorage.getItem('foundCodes') || '[]'));
         foundLog = JSON.parse(localStorage.getItem('foundLog') || '[]');
         
-        // Visibility API: Пауза при сворачивании браузера
         document.addEventListener("visibilitychange", () => {
             if (document.hidden && html5QrCode && !isAppPaused) {
                 softPause();
@@ -222,8 +225,9 @@
         if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
 
         const config = {
-            fps: 15, // Оптимизация батареи
-            qrbox: { width: 280, height: 280 },
+            fps: 15, 
+            qrbox: { width: qrSize, height: qrSize },
+            aspectRatio: 1.0, /* <--- Заставляем библиотеку обрезать видео в ровный квадрат */
             formatsToSupport: [ 
                 Html5QrcodeSupportedFormats.EAN_13, 
                 Html5QrcodeSupportedFormats.EAN_8, 
@@ -231,7 +235,7 @@
             ],
             videoConstraints: {
                 facingMode: "environment",
-                width: { ideal: 1280 }, // HD вместо Full HD для стабильности
+                width: { ideal: 1280 }, 
                 height: { ideal: 720 },
                 focusMode: "continuous"
             }
@@ -261,7 +265,6 @@
         }
     }
 
-    // Мягкая пауза и возобновление для экономии ресурсов
     async function softPause() {
         isAppPaused = true;
         if (html5QrCode) await html5QrCode.pause();
@@ -331,4 +334,3 @@
 </script>
 </body>
 </html>
-
