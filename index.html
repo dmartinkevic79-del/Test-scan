@@ -2,298 +2,333 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>WB Scanner Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a0f16">
+    <title>Sklad Scanner Elite v8</title>
+    
+    <link rel="manifest" id="manifest-placeholder">
     <script src="https://unpkg.com/html5-qrcode"></script>
+    
     <style>
         :root {
-            --bg-color: #000;
-            --accent-blue: #00d4ff;
-            --accent-green: #2ecc71;
-            --glass-border: rgba(255, 255, 255, 0.12);
+            --bg: #05080a;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.07);
+            --success: #00ff9d;
+            --danger: #ff4d4d;
+            --accent: #00d4ff;
+            --text: #e0e6ed;
+            --qr-size: 280px;
         }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            background: var(--bg-color); 
-            color: #fff; 
-            margin: 0; 
-            padding: 20px; 
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0; padding: 0;
+            background: #05080a;
+            color: var(--text);
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+            overflow-x: hidden;
         }
-        
-        .scanner-wrapper {
-            position: relative;
-            width: 100%;
-            max-width: 500px;
-            margin: 0 auto;
-            border-radius: 30px;
-            overflow: hidden;
+
+        #flashOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 9999; display: none; pointer-events: none;
+        }
+
+        .container { 
+            max-width: 500px; margin: 0 auto; padding: 12px; 
+            width: 100%; box-sizing: border-box; flex: 1;
+            display: flex; flex-direction: column;
+        }
+
+        .card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 24px; padding: 18px;
             border: 1px solid var(--glass-border);
-            background: #050505;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            margin-bottom: 15px;
         }
 
-        #reader { width: 100%; }
+        h2 { margin: 0 0 15px 0; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.6; text-align: center;}
 
-        .scanner-laser {
-            position: absolute;
-            top: 25%;
-            left: 15%;
-            width: 70%;
-            height: 2px;
-            background: rgba(0, 212, 255, 0.5); 
-            box-shadow: 0 0 15px 3px rgba(0, 212, 255, 0.4); 
-            z-index: 10;
-            display: none;
-            pointer-events: none;
-            animation: scanning 3.5s infinite ease-in-out; 
+        textarea {
+            width: 100%; height: 110px; background: rgba(0, 0, 0, 0.6); color: var(--success);
+            border: 1px solid var(--glass-border); border-radius: 16px; padding: 15px;
+            font-family: 'Consolas', monospace; font-size: 16px; box-sizing: border-box;
+            outline: none; transition: 0.3s; resize: none;
         }
 
-        @keyframes scanning {
-            0% { top: 25%; }
-            50% { top: 75%; }
-            100% { top: 25%; }
+        button {
+            width: 100%; padding: 16px; border-radius: 14px; border: none;
+            font-size: 14px; font-weight: 700; color: white; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 1px;
+            transition: all 0.2s ease; margin-top: 10px;
         }
+        button:active { transform: scale(0.98); }
 
-        #status-overlay {
-            position: fixed;
-            top: 40%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.9);
-            background: rgba(255, 150, 0, 0.15);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 150, 0, 0.3);
-            color: #fff;
-            padding: 20px 40px;
-            border-radius: 25px;
-            font-weight: 800;
-            font-size: 18px;
-            z-index: 10000;
-            display: none;
-            text-align: center;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.8), 0 0 20px rgba(255, 150, 0, 0.15);
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        #status-overlay.active { display: block; transform: translate(-50%, -50%) scale(1); }
-
-        @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        .controls { display: flex; flex-direction: column; gap: 16px; margin-top: 25px; }
-        
-        button { 
-            padding: 20px; 
-            border-radius: 20px; 
-            font-weight: 800; 
-            cursor: pointer; 
-            font-size: 15px; 
-            transition: all 0.3s ease; 
-            text-transform: uppercase; 
-            border: 1px solid var(--glass-border);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            color: #fff;
-            background-size: 200% 200%;
-            animation: gradientShift 5s infinite ease;
-            letter-spacing: 1px;
-        }
-
-        button:active { transform: scale(0.96); filter: brightness(1.2); }
-
-        .btn-start { background-image: linear-gradient(135deg, #6e2796, #a64dff, #6e2796); box-shadow: 0 8px 25px rgba(110, 39, 150, 0.3); }
-        .btn-copy { background-image: linear-gradient(135deg, #1e8449, #2ecc71, #1e8449); box-shadow: 0 8px 25px rgba(30, 132, 73, 0.3); }
-        .btn-clear { background: rgba(255, 255, 255, 0.05); color: #888; animation: none; }
+        .btn-start { background: linear-gradient(135deg, #006357, #4e6b1e); }
+        .btn-clear { background: rgba(255, 77, 77, 0.05); border: 1px solid rgba(255, 77, 77, 0.3); color: #ff8080; }
+        .btn-copy { background: linear-gradient(135deg, #007799, #002b55); flex: 2; margin: 0; }
+        .btn-stop { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); flex: 1; margin: 0; }
         
         .btn-torch { 
-            background-image: linear-gradient(135deg, rgba(255, 213, 79, 0.2), rgba(255, 179, 0, 0.05));
-            border-color: rgba(255, 213, 79, 0.3);
-            box-shadow: 0 8px 25px rgba(255, 213, 79, 0.15);
-            color: #ffd54f;
-            animation: none; 
-            display: none; 
+            background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; 
+            color: #f59e0b; margin-bottom: 10px; display: none; margin-top: 0;
         }
 
-        #list-container { 
-            margin-top: 25px; 
-            background: rgba(255, 255, 255, 0.03); 
-            border-radius: 28px; 
-            padding: 24px; 
+        #reader-container { 
+            position: relative; border-radius: 20px; overflow: hidden; 
+            background: #000; aspect-ratio: 1/1; 
+        }
+        
+        /* Оптимизированный лазер */
+        .laser {
+            position: absolute; 
+            left: calc(50% - (var(--qr-size) / 2));
+            width: var(--qr-size); 
+            height: 2px;
+            background: var(--accent);
+            box-shadow: 0 0 10px var(--accent);
+            z-index: 5; pointer-events: none;
+            display: none;
+            will-change: transform;
+            /* Вычисляем начальную точку: 50% высоты контейнера минус половина рамки */
+            top: calc(50% - (var(--qr-size) / 2));
+            animation: scan-optimized 3.5s linear infinite;
+        }
+
+        @keyframes scan-optimized {
+            0% { transform: translateY(0); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(var(--qr-size)); opacity: 0; }
+        }
+
+        .stats {
+            display: flex; justify-content: space-between; background: var(--glass-bg);
+            padding: 15px 20px; border-radius: 20px; margin-bottom: 12px;
             border: 1px solid var(--glass-border);
         }
+        .val { font-size: 28px; font-weight: 800; color: #fff; line-height: 1; }
+        .label { font-size: 10px; opacity: 0.4; font-weight: 900; text-transform: uppercase; }
 
-        .status-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px; }
-        .count-value { color: var(--accent-green); font-size: 34px; font-weight: 900; }
+        .found-list {
+            list-style: none; padding: 0; margin: 0; max-height: 150px;
+            overflow-y: auto; border-radius: 12px; background: rgba(0,0,0,0.2);
+        }
+        .found-list li {
+            padding: 12px 15px; border-bottom: 1px solid var(--glass-border);
+            display: flex; justify-content: space-between; font-size: 14px;
+        }
+        .found-list li strong { color: var(--success); font-family: monospace; }
+
+        .attribution {
+            text-align: center; font-size: 10px; color: #9ca3af;
+            padding: 20px 0; text-transform: uppercase; letter-spacing: 2px;
+            font-weight: 600;
+        }
         
-        ul { list-style: none; padding: 0; margin-top: 15px; }
-        li { padding: 18px 0; border-top: 1px solid rgba(255,255,255,0.03); display: flex; justify-content: space-between; align-items: center; }
-        .code-text { font-size: 18px; font-weight: 600; color: #eee; }
-        .time-text { font-size: 12px; color: #555; }
-
-        .footer { 
-            text-align: center; font-size: 11px; color: #aaa; 
-            margin: 45px 0 25px 0; text-transform: uppercase; 
-            letter-spacing: 2px; font-weight: 700;
-        }
-
-        #flash-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 212, 255, 0.2); 
-            z-index: 9999; pointer-events: none; opacity: 0; transition: opacity 0.1s;
-        }
-        .flash-active { opacity: 1 !important; }
+        #screenScanner { display: none; flex-direction: column; }
     </style>
 </head>
 <body>
-    <div id="flash-overlay"></div>
-    <div id="status-overlay">⚠️ УЖЕ В СПИСКЕ</div>
 
-    <div class="scanner-wrapper">
-        <div id="reader"></div>
-        <div id="laser" class="scanner-laser"></div>
-    </div>
+<div id="flashOverlay"></div>
 
-    <div class="controls">
-        <button id="start-btn" class="btn-start" onclick="initScanner()">🚀 ЗАПУСТИТЬ СКАНЕР</button>
-        <button id="torch-button" class="btn-torch" onclick="toggleTorch()">🔦 ФОНАРИК</button>
-        <button class="btn-copy" onclick="copyToClipboard()">📋 КОПИРОВАТЬ СПИСОК</button>
-        <button class="btn-clear" onclick="clearList()">🗑️ ОЧИСТИТЬ СПИСОК</button>
-    </div>
-
-    <div id="list-container">
-        <div class="status-bar">
-            <span style="color: #666; font-weight: 800; font-size: 12px;">ОБРАБОТАНО КОДОВ</span>
-            <span id="count" class="count-value">0</span>
+<div class="container">
+    <div id="screenSetup">
+        <div class="card">
+            <h2>Elite Scanner v8</h2>
+            <textarea id="codesInput" placeholder="Список штрихкодов..."></textarea>
+            <button class="btn-start" id="startBtn" onclick="startApp()">Запустить сканер</button>
+            <button class="btn-clear" onclick="clearMemory()">Очистить всё</button>
         </div>
-        <ul id="scanned-codes"></ul>
     </div>
 
-    <div class="footer">DEVELOPED BY D. MARTINKEVICH FOR SOFRINOKBT</div>
+    <div id="screenScanner">
+        <button id="torchBtn" class="btn-torch" onclick="toggleTorch()">🔦 Фонарик</button>
+        
+        <div class="card" style="padding: 0; overflow: hidden;">
+            <div id="reader-container">
+                <div id="reader"></div>
+                <div id="laser" class="laser"></div>
+            </div>
+        </div>
 
-    <script>
-        const STORAGE_KEY = 'wb_scanner_v15_stable';
-        let codes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-        let html5QrCode = null;
-        let lastScanTime = 0;
-        const SCAN_DELAY = 2200; 
+        <div class="stats">
+            <div><span class="label">Готово</span><span class="val" id="countFound">0</span></div>
+            <div style="text-align:right"><span class="label">Осталось</span><span class="val" id="countLeft" style="color: var(--accent)">0</span></div>
+        </div>
 
-        window.onload = () => renderList();
+        <div class="card">
+            <ul class="found-list" id="foundItemsList"></ul>
+            <div style="display: flex; gap: 12px; margin-top: 15px;">
+                <button class="btn-copy" id="copyBtn" onclick="copyToClipboard()">Отчет</button>
+                <button class="btn-stop" onclick="pauseApp()">Назад</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-        function showDuplicateWarning() {
-            const el = document.getElementById('status-overlay');
-            el.classList.add('active');
-            setTimeout(() => { el.classList.remove('active'); }, 2000);
-        }
+<div class="attribution">
+    developed by D. Martinkevich for SofrinoKBT
+</div>
 
-        async function initScanner() {
-            if (html5QrCode) { try { await html5QrCode.stop(); } catch(e) {} }
-            html5QrCode = new Html5Qrcode("reader");
-            
-            const config = {
-                fps: 25,
-                qrbox: (vw, vh) => {
-                    let s = Math.floor(Math.min(vw, vh) * 0.75);
-                    return { width: s, height: s };
-                },
-                aspectRatio: 1.0
-            };
+<script>
+    let targetCodes = new Set();
+    let foundCodes = new Set();
+    let foundLog = [];
+    let html5QrCode;
+    let wakeLock = null;
+    let isTorchOn = false;
+    let isAppPaused = false;
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-            try {
-                await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
-                    const now = Date.now();
-                    if (now - lastScanTime < SCAN_DELAY) return;
+    window.onload = () => {
+        const savedInput = localStorage.getItem('codesInput');
+        if (savedInput) document.getElementById('codesInput').value = savedInput;
+        foundCodes = new Set(JSON.parse(localStorage.getItem('foundCodes') || '[]'));
+        foundLog = JSON.parse(localStorage.getItem('foundLog') || '[]');
+        
+        // Visibility API: Пауза при сворачивании браузера
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden && html5QrCode && !isAppPaused) {
+                softPause();
+            } else if (!document.hidden && isAppPaused) {
+                softResume();
+            }
+        });
+    };
 
-                    let cleaned = text.trim();
-                    let match = cleaned.match(/\d{10,}/);
-                    let processed = match ? match[0] : cleaned;
+    async function startApp() {
+        const input = document.getElementById('codesInput').value;
+        const lines = input.split('\n').map(s => s.trim()).filter(s => s !== "");
+        if (!lines.length) return alert("Введите штрихкоды!");
 
-                    if (codes.some(c => c.text === processed)) {
-                        showDuplicateWarning();
-                        lastScanTime = now;
-                        return;
+        targetCodes = new Set(lines);
+        document.getElementById('screenSetup').style.display = 'none';
+        document.getElementById('screenScanner').style.display = 'flex';
+        document.getElementById('laser').style.display = 'block';
+        updateUI();
+
+        if ('wakeLock' in navigator) try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+
+        initScanner();
+    }
+
+    async function initScanner() {
+        if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+
+        const config = {
+            fps: 15, // Оптимизация батареи
+            qrbox: { width: 280, height: 280 },
+            formatsToSupport: [ 
+                Html5QrcodeSupportedFormats.EAN_13, 
+                Html5QrcodeSupportedFormats.EAN_8, 
+                Html5QrcodeSupportedFormats.CODE_128 
+            ],
+            videoConstraints: {
+                facingMode: "environment",
+                width: { ideal: 1280 }, // HD вместо Full HD для стабильности
+                height: { ideal: 720 },
+                focusMode: "continuous"
+            }
+        };
+
+        try {
+            await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
+                const id = text.trim(); 
+                if (targetCodes.has(id)) {
+                    if (!foundCodes.has(id)) {
+                        triggerFeedback('success');
+                        foundCodes.add(id);
+                        foundLog.unshift({ id, time: new Date().toLocaleTimeString('ru-RU') });
+                        saveState();
+                        updateUI();
                     }
-
-                    codes.push({ 
-                        text: processed, 
-                        time: new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'}) 
-                    });
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(codes));
-                    
-                    const flash = document.getElementById('flash-overlay');
-                    flash.classList.add('flash-active');
-                    setTimeout(() => { flash.classList.remove('flash-active'); }, 150);
-
-                    renderList();
-                    new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play().catch(()=>{});
-                    lastScanTime = now;
-                });
-
-                document.getElementById('start-btn').style.display = 'none';
-                document.getElementById('laser').style.display = 'block';
-                setTimeout(checkTorch, 1000);
-            } catch (err) { alert("Ошибка камеры: " + err); }
-        }
-
-        function renderList() {
-            const list = document.getElementById('scanned-codes');
-            list.innerHTML = '';
-            [...codes].reverse().forEach(item => {
-                const li = document.createElement('li');
-                li.innerHTML = `<span class="code-text">${item.text}</span><span class="time-text">${item.time}</span>`;
-                list.appendChild(li);
+                } else {
+                    triggerFeedback('fail');
+                }
             });
-            document.getElementById('count').innerText = codes.length;
-        }
-
-        // --- ОБНОВЛЕННАЯ ФУНКЦИЯ КОПИРОВАНИЯ ---
-        function copyToClipboard() {
-            if (!codes.length) return;
             
-            // Получаем текущую дату
-            const dateStr = new Date().toLocaleDateString('ru-RU');
-            
-            // Формируем красивый заголовок
-            let report = `ОТЧЕТ ЗА ${dateStr}\n`;
-            report += `Всего кодов: ${codes.length}\n`;
-            report += `------------------------\n`;
-            
-            // Добавляем коды вместе со временем (через тире)
-            report += codes.map(c => `${c.text} - ${c.time}`).join('\n');
-            
-            navigator.clipboard.writeText(report).then(() => alert("Отчет с датой и временем скопирован!"));
+            const cap = html5QrCode.getRunningTrackCapabilities();
+            document.getElementById('torchBtn').style.display = cap.torch ? 'block' : 'none';
+            isAppPaused = false;
+        } catch (err) {
+            console.error("Scanner error", err);
         }
+    }
 
-        function clearList() {
-            if (confirm("Удалить всё?")) {
-                codes = [];
-                localStorage.removeItem(STORAGE_KEY);
-                renderList();
-            }
-        }
+    // Мягкая пауза и возобновление для экономии ресурсов
+    async function softPause() {
+        isAppPaused = true;
+        if (html5QrCode) await html5QrCode.pause();
+        document.getElementById('laser').style.display = 'none';
+    }
 
-        function checkTorch() {
-            const isAndroid = /Android/i.test(navigator.userAgent);
-            const track = html5QrCode.getRunningTrackCapabilities();
-            if (track?.torch || isAndroid) {
-                document.getElementById('torch-button').style.display = 'block';
-            }
-        }
+    async function softResume() {
+        if (html5QrCode) await html5QrCode.resume();
+        document.getElementById('laser').style.display = 'block';
+        isAppPaused = false;
+    }
 
-        async function toggleTorch() {
-            const btn = document.getElementById('torch-button');
-            const isOff = btn.innerText.includes("ФОНАРИК");
-            try {
-                await html5QrCode.applyVideoConstraints({ advanced: [{ torch: isOff }] });
-                btn.innerText = isOff ? "❌ ВЫКЛЮЧИТЬ" : "🔦 ФОНАРИК";
-                btn.style.boxShadow = isOff ? "0 8px 35px rgba(255, 213, 79, 0.4)" : "";
-            } catch(e) {
-                alert("Увы, прошивка вашего устройства аппаратно блокирует доступ к фонарику для браузера.");
-            }
+    function triggerFeedback(type) {
+        const overlay = document.getElementById('flashOverlay');
+        overlay.style.backgroundColor = type === 'success' ? 'rgba(0, 255, 157, 0.3)' : 'rgba(255, 77, 77, 0.3)';
+        if (type === 'success' && audioCtx.state !== 'closed') {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            osc.connect(g); g.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
         }
-    </script>
+        overlay.style.display = 'block';
+        setTimeout(() => overlay.style.display = 'none', 100);
+    }
+
+    function updateUI() {
+        document.getElementById('countFound').innerText = foundCodes.size;
+        document.getElementById('countLeft').innerText = Math.max(0, targetCodes.size - foundCodes.size);
+        document.getElementById('foundItemsList').innerHTML = foundLog.slice(0, 50).map(i => `<li><strong>${i.id}</strong><span style="opacity:0.4">${i.time}</span></li>`).join('');
+    }
+
+    function saveState() {
+        localStorage.setItem('codesInput', document.getElementById('codesInput').value);
+        localStorage.setItem('foundCodes', JSON.stringify([...foundCodes]));
+        localStorage.setItem('foundLog', JSON.stringify(foundLog));
+    }
+
+    async function toggleTorch() {
+        isTorchOn = !isTorchOn;
+        try {
+            await html5QrCode.applyVideoConstraints({ advanced: [{ torch: isTorchOn }] });
+            document.getElementById('torchBtn').innerText = isTorchOn ? "🔦 Фонарик: ВКЛ" : "🔦 Фонарик: ВЫКЛ";
+        } catch (e) {}
+    }
+
+    function clearMemory() {
+        if (confirm("Сбросить данные?")) { localStorage.clear(); location.reload(); }
+    }
+
+    function copyToClipboard() {
+        const txt = foundLog.map(i => `${i.id}\t${i.time}`).join('\n');
+        navigator.clipboard.writeText(txt).then(() => alert("Скопировано"));
+    }
+
+    function pauseApp() {
+        if (wakeLock) wakeLock.release();
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => {
+                document.getElementById('screenScanner').style.display = 'none';
+                document.getElementById('screenSetup').style.display = 'block';
+            });
+        }
+    }
+</script>
 </body>
 </html>
+
