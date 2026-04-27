@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0a0f16">
-    <title>Sklad Scanner Sofrinno KBT</title>
+    <title>Sklad Scanner Elite v8.3</title>
     
-    <link rel="manifest" id="manifest-placeholder">
     <script src="https://unpkg.com/html5-qrcode"></script>
     
     <style>
@@ -139,7 +138,7 @@
 <div class="container">
     <div id="screenSetup">
         <div class="card">
-            <h2>Sklad Scanner Sofrinno KBT</h2>
+            <h2>Elite Scanner v8.3</h2>
             <textarea id="codesInput" placeholder="Список штрихкодов..."></textarea>
             <button class="btn-start" id="startBtn" onclick="startApp()">Запустить сканер</button>
             <button class="btn-clear" onclick="clearMemory()">Очистить всё</button>
@@ -185,10 +184,9 @@
     let isAppPaused = false;
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
-    // Переменные для контроля повторного писка
     let lastScanId = null;
     let lastScanTime = 0;
-    const SCAN_COOLDOWN_MS = 600; // Пауза между писками, если держать на одном коде
+    const SCAN_COOLDOWN_MS = 600; 
 
     const rootStyles = getComputedStyle(document.documentElement);
     const qrSize = parseInt(rootStyles.getPropertyValue('--qr-size').trim());
@@ -210,7 +208,8 @@
 
     async function startApp() {
         const input = document.getElementById('codesInput').value;
-        const lines = input.split('\n').map(s => s.trim()).filter(s => s !== "");
+        // Очистка от скрытых символов \r и лишних пробелов
+        const lines = input.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(s => s !== "");
         if (!lines.length) return alert("Введите штрихкоды!");
 
         targetCodes = new Set(lines);
@@ -246,33 +245,40 @@
 
         try {
             await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
-                const id = text.trim(); 
+                const rawText = text.trim().toUpperCase();
+                
+                // Извлекаем чистый ID (если код формата "something:id")
+                const parts = rawText.split(':');
+                const cleanId = parts[parts.length - 1].trim();
+                
                 const now = Date.now();
 
-                if (targetCodes.has(id)) {
-                    // Код из нашего списка
-                    if (!foundCodes.has(id)) {
-                        // НОВЫЙ КОД - добавляем и пищим сразу
-                        foundCodes.add(id);
-                        foundLog.unshift({ id, time: new Date().toLocaleTimeString('ru-RU') });
+                // Проверяем совпадение либо полного текста, либо чистого ID
+                if (targetCodes.has(rawText) || targetCodes.has(cleanId)) {
+                    // НАШ КОД
+                    const finalId = targetCodes.has(cleanId) ? cleanId : rawText;
+
+                    if (!foundCodes.has(finalId)) {
+                        foundCodes.add(finalId);
+                        foundLog.unshift({ id: finalId, time: new Date().toLocaleTimeString('ru-RU') });
                         saveState();
                         updateUI();
                         triggerFeedback('success');
-                        lastScanId = id;
+                        lastScanId = rawText;
                         lastScanTime = now;
                     } else {
-                        // УЖЕ НАЙДЕННЫЙ КОД - пищим с интервалом SCAN_COOLDOWN_MS
-                        if (id !== lastScanId || (now - lastScanTime > SCAN_COOLDOWN_MS)) {
+                        // Повторный сигнал на уже найденный
+                        if (rawText !== lastScanId || (now - lastScanTime > SCAN_COOLDOWN_MS)) {
                             triggerFeedback('success');
-                            lastScanId = id;
+                            lastScanId = rawText;
                             lastScanTime = now;
                         }
                     }
                 } else {
-                    // ЧУЖОЙ КОД - моргаем красным с тем же интервалом
-                    if (id !== lastScanId || (now - lastScanTime > SCAN_COOLDOWN_MS)) {
+                    // ЧУЖОЙ КОД (красный)
+                    if (rawText !== lastScanId || (now - lastScanTime > SCAN_COOLDOWN_MS)) {
                         triggerFeedback('fail');
-                        lastScanId = id;
+                        lastScanId = rawText;
                         lastScanTime = now;
                     }
                 }
