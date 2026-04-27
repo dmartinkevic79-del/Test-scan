@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0a0f16">
-    <title>Sklad Scanner Elite v8.3</title>
+    <title>Sklad Scanner Elite v8.4</title>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
     
@@ -138,7 +138,7 @@
 <div class="container">
     <div id="screenSetup">
         <div class="card">
-            <h2>Elite Scanner v8.3</h2>
+            <h2>Elite Scanner v8.4</h2>
             <textarea id="codesInput" placeholder="Список штрихкодов..."></textarea>
             <button class="btn-start" id="startBtn" onclick="startApp()">Запустить сканер</button>
             <button class="btn-clear" onclick="clearMemory()">Очистить всё</button>
@@ -208,7 +208,6 @@
 
     async function startApp() {
         const input = document.getElementById('codesInput').value;
-        // Очистка от скрытых символов \r и лишних пробелов
         const lines = input.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(s => s !== "");
         if (!lines.length) return alert("Введите штрихкоды!");
 
@@ -246,28 +245,38 @@
         try {
             await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
                 const rawText = text.trim().toUpperCase();
-                
-                // Извлекаем чистый ID (если код формата "something:id")
-                const parts = rawText.split(':');
-                const cleanId = parts[parts.length - 1].trim();
-                
                 const now = Date.now();
+                
+                // РАЗБИВАЕМ КОД НА СЕГМЕНТЫ (для поддержки формата $1:1:ID:DATA)
+                const segments = rawText.split(':').map(s => s.trim());
+                
+                // Ищем, есть ли хоть один сегмент в нашем списке targetCodes
+                let matchedId = null;
+                
+                // Сначала проверяем всю строку целиком
+                if (targetCodes.has(rawText)) {
+                    matchedId = rawText;
+                } else {
+                    // Если целиком не нашли, ищем среди сегментов
+                    for (let segment of segments) {
+                        if (targetCodes.has(segment)) {
+                            matchedId = segment;
+                            break;
+                        }
+                    }
+                }
 
-                // Проверяем совпадение либо полного текста, либо чистого ID
-                if (targetCodes.has(rawText) || targetCodes.has(cleanId)) {
-                    // НАШ КОД
-                    const finalId = targetCodes.has(cleanId) ? cleanId : rawText;
-
-                    if (!foundCodes.has(finalId)) {
-                        foundCodes.add(finalId);
-                        foundLog.unshift({ id: finalId, time: new Date().toLocaleTimeString('ru-RU') });
+                if (matchedId) {
+                    // НАШЛИ СОВПАДЕНИЕ
+                    if (!foundCodes.has(matchedId)) {
+                        foundCodes.add(matchedId);
+                        foundLog.unshift({ id: matchedId, time: new Date().toLocaleTimeString('ru-RU') });
                         saveState();
                         updateUI();
                         triggerFeedback('success');
                         lastScanId = rawText;
                         lastScanTime = now;
                     } else {
-                        // Повторный сигнал на уже найденный
                         if (rawText !== lastScanId || (now - lastScanTime > SCAN_COOLDOWN_MS)) {
                             triggerFeedback('success');
                             lastScanId = rawText;
@@ -275,7 +284,7 @@
                         }
                     }
                 } else {
-                    // ЧУЖОЙ КОД (красный)
+                    // ЧУЖОЙ КОД
                     if (rawText !== lastScanId || (now - lastScanTime > SCAN_COOLDOWN_MS)) {
                         triggerFeedback('fail');
                         lastScanId = rawText;
