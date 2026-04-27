@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0a0f16">
-    <title>Sklad Scanner Elite v8.5</title>
+    <title>Sklad Scanner Elite v8.6</title>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
     
@@ -17,7 +17,7 @@
             --danger: #ff4d4d;
             --accent: #00d4ff;
             --text: #e0e6ed;
-            --qr-size: 260px; 
+            --qr-size: 240px; 
         }
 
         body {
@@ -94,7 +94,7 @@
             display: none;
             will-change: transform;
             top: calc(50% - (var(--qr-size) / 2));
-            animation: scan-optimized 3.5s ease-in-out infinite;
+            animation: scan-optimized 3s ease-in-out infinite;
         }
 
         @keyframes scan-optimized {
@@ -136,7 +136,7 @@
 <div class="container">
     <div id="screenSetup">
         <div class="card">
-            <h2>Elite Scanner v8.5</h2>
+            <h2>Elite Scanner v8.6</h2>
             <textarea id="codesInput" placeholder="Список штрихкодов..."></textarea>
             <button class="btn-start" id="startBtn" onclick="startApp()">Запустить сканер</button>
             <button class="btn-clear" onclick="clearMemory()">Очистить всё</button>
@@ -184,7 +184,7 @@
     
     let lastScanId = null;
     let lastScanTime = 0;
-    const SCAN_COOLDOWN_MS = 650; 
+    const SCAN_COOLDOWN_MS = 600; 
 
     const rootStyles = getComputedStyle(document.documentElement);
     const qrSize = parseInt(rootStyles.getPropertyValue('--qr-size').trim());
@@ -223,19 +223,15 @@
     async function initScanner() {
         if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
 
-        // Улучшенные настройки качества
+        // Облегченные настройки для лучшего фокуса
         const config = {
-            fps: 24, // Увеличили скорость обработки
+            fps: 15, // Плавность без перегрузки
             qrbox: { width: qrSize, height: qrSize },
             aspectRatio: 1.0,
-            disableFlip: true, // Экономим ресурсы на зеркалировании
-            experimentalFeatures: {
-                useBarCodeDetectorIfSupported: true // Использование системного API Android
-            },
             videoConstraints: {
                 facingMode: "environment",
-                width: { min: 640, ideal: 1920, max: 1920 }, // Просим Full HD
-                height: { min: 480, ideal: 1080, max: 1080 },
+                width: { ideal: 1280 }, // 720p - золотой стандарт
+                height: { ideal: 720 },
                 focusMode: "continuous"
             }
         };
@@ -306,22 +302,20 @@
 
     function triggerFeedback(type) {
         const overlay = document.getElementById('flashOverlay');
-        overlay.style.backgroundColor = type === 'success' ? 'rgba(0, 255, 157, 0.35)' : 'rgba(255, 77, 77, 0.35)';
+        overlay.style.backgroundColor = type === 'success' ? 'rgba(0, 255, 157, 0.3)' : 'rgba(255, 77, 77, 0.3)';
         
         if (type === 'success' && audioCtx.state !== 'closed') {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
             const g = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(950, audioCtx.currentTime);
-            g.gain.setValueAtTime(0.2, audioCtx.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.12);
+            osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
             osc.connect(g); g.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.12);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
         }
         
         overlay.style.display = 'block';
-        setTimeout(() => overlay.style.display = 'none', 120);
+        setTimeout(() => overlay.style.display = 'none', 100);
     }
 
     function updateUI() {
