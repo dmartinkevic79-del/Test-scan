@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0a0f16">
-    <title>Sklad Scanner Elite v8.6</title>
+    <title>Sklad Scanner Elite v8.7</title>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
     
@@ -17,7 +17,7 @@
             --danger: #ff4d4d;
             --accent: #00d4ff;
             --text: #e0e6ed;
-            --qr-size: 240px; 
+            --qr-size: 280px; 
         }
 
         body {
@@ -27,7 +27,6 @@
             color: var(--text);
             min-height: 100vh;
             display: flex; flex-direction: column;
-            overflow-x: hidden;
         }
 
         #flashOverlay {
@@ -44,7 +43,6 @@
         .card {
             background: var(--glass-bg);
             backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
             border-radius: 24px; padding: 18px;
             border: 1px solid var(--glass-border);
             margin-bottom: 15px;
@@ -56,48 +54,33 @@
             width: 100%; height: 110px; background: rgba(0, 0, 0, 0.6); color: var(--success);
             border: 1px solid var(--glass-border); border-radius: 16px; padding: 15px;
             font-family: 'Consolas', monospace; font-size: 16px; box-sizing: border-box;
-            outline: none; transition: 0.3s; resize: none;
+            outline: none; resize: none;
         }
 
         button {
             width: 100%; padding: 16px; border-radius: 14px; border: none;
             font-size: 14px; font-weight: 700; color: white; cursor: pointer;
-            text-transform: uppercase; letter-spacing: 1px;
-            transition: all 0.2s ease; margin-top: 10px;
+            text-transform: uppercase; transition: 0.2s; margin-top: 10px;
         }
-        button:active { transform: scale(0.98); }
 
         .btn-start { background: linear-gradient(135deg, #006357, #4e6b1e); }
         .btn-clear { background: rgba(255, 77, 77, 0.05); border: 1px solid rgba(255, 77, 77, 0.3); color: #ff8080; }
         .btn-copy { background: linear-gradient(135deg, #007799, #002b55); flex: 2; margin: 0; }
         .btn-stop { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); flex: 1; margin: 0; }
-        
-        .btn-torch { 
-            background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; 
-            color: #f59e0b; margin-bottom: 10px; display: none; margin-top: 0;
-        }
+        .btn-torch { background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; color: #f59e0b; margin-bottom: 10px; display: none;}
 
-        #reader-container { 
-            position: relative; border-radius: 20px; overflow: hidden; 
-            background: #000;
-        }
+        #reader-container { position: relative; border-radius: 20px; overflow: hidden; background: #000; }
         #reader { width: 100%; }
         
         .laser {
-            position: absolute; 
-            left: calc(50% - (var(--qr-size) / 2));
-            width: var(--qr-size); 
-            height: 2px;
-            background: var(--accent);
-            box-shadow: 0 0 15px var(--accent);
-            z-index: 5; pointer-events: none;
-            display: none;
-            will-change: transform;
+            position: absolute; left: calc(50% - (var(--qr-size) / 2));
+            width: var(--qr-size); height: 2px; background: var(--accent);
+            box-shadow: 0 0 15px var(--accent); z-index: 5; pointer-events: none;
             top: calc(50% - (var(--qr-size) / 2));
-            animation: scan-optimized 3s ease-in-out infinite;
+            animation: scan-anim 3s ease-in-out infinite; display: none;
         }
 
-        @keyframes scan-optimized {
+        @keyframes scan-anim {
             0%, 100% { transform: translateY(0); opacity: 0.2; }
             50% { transform: translateY(var(--qr-size)); opacity: 1; }
         }
@@ -107,7 +90,7 @@
             padding: 15px 20px; border-radius: 20px; margin-bottom: 12px;
             border: 1px solid var(--glass-border);
         }
-        .val { font-size: 28px; font-weight: 800; color: #fff; line-height: 1; }
+        .val { font-size: 28px; font-weight: 800; color: #fff; }
         .label { font-size: 10px; opacity: 0.4; font-weight: 900; text-transform: uppercase; }
 
         .found-list {
@@ -119,12 +102,6 @@
             display: flex; justify-content: space-between; font-size: 14px;
         }
         .found-list li strong { color: var(--success); font-family: monospace; }
-
-        .attribution {
-            text-align: center; font-size: 10px; color: #9ca3af;
-            padding: 20px 0; text-transform: uppercase; letter-spacing: 2px;
-            font-weight: 600;
-        }
         
         #screenScanner { display: none; flex-direction: column; }
     </style>
@@ -136,176 +113,117 @@
 <div class="container">
     <div id="screenSetup">
         <div class="card">
-            <h2>Elite Scanner v8.6</h2>
-            <textarea id="codesInput" placeholder="Список штрихкодов..."></textarea>
-            <button class="btn-start" id="startBtn" onclick="startApp()">Запустить сканер</button>
+            <h2>Elite Scanner v8.7</h2>
+            <textarea id="codesInput" placeholder="Список ID (по одному в строке)..."></textarea>
+            <button class="btn-start" onclick="startApp()">Запустить сканер</button>
             <button class="btn-clear" onclick="clearMemory()">Очистить всё</button>
         </div>
     </div>
 
     <div id="screenScanner">
         <button id="torchBtn" class="btn-torch" onclick="toggleTorch()">🔦 Фонарик</button>
-        
-        <div class="card" style="padding: 0; border: none; background: transparent; box-shadow: none;">
-            <div id="reader-container">
-                <div id="reader"></div>
-                <div id="laser" class="laser"></div>
-            </div>
+        <div id="reader-container">
+            <div id="reader"></div>
+            <div id="laser" class="laser"></div>
         </div>
 
         <div class="stats">
-            <div><span class="label">Готово</span><span class="val" id="countFound">0</span></div>
+            <div><span class="label">Найдено</span><span class="val" id="countFound">0</span></div>
             <div style="text-align:right"><span class="label">Осталось</span><span class="val" id="countLeft" style="color: var(--accent)">0</span></div>
         </div>
 
         <div class="card">
             <ul class="found-list" id="foundItemsList"></ul>
             <div style="display: flex; gap: 12px; margin-top: 15px;">
-                <button class="btn-copy" id="copyBtn" onclick="copyToClipboard()">Отчет</button>
+                <button class="btn-copy" onclick="copyToClipboard()">Отчет</button>
                 <button class="btn-stop" onclick="pauseApp()">Назад</button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="attribution">
-    developed by D. Martinkevich for SofrinoKBT
-</div>
-
 <script>
-    let targetCodes = new Set();
+    let targetCodesArray = [];
     let foundCodes = new Set();
     let foundLog = [];
     let html5QrCode;
-    let wakeLock = null;
     let isTorchOn = false;
-    let isAppPaused = false;
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    
-    let lastScanId = null;
+    let lastScanResult = null;
     let lastScanTime = 0;
-    const SCAN_COOLDOWN_MS = 600; 
+    const SCAN_DELAY = 1500; // Пауза между вспышками для одного и того же кода
 
-    const rootStyles = getComputedStyle(document.documentElement);
-    const qrSize = parseInt(rootStyles.getPropertyValue('--qr-size').trim());
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
     window.onload = () => {
         const savedInput = localStorage.getItem('codesInput');
         if (savedInput) document.getElementById('codesInput').value = savedInput;
         foundCodes = new Set(JSON.parse(localStorage.getItem('foundCodes') || '[]'));
         foundLog = JSON.parse(localStorage.getItem('foundLog') || '[]');
-        
-        document.addEventListener("visibilitychange", () => {
-            if (document.hidden && html5QrCode && !isAppPaused) {
-                softPause();
-            } else if (!document.hidden && isAppPaused) {
-                softResume();
-            }
-        });
     };
 
     async function startApp() {
         const input = document.getElementById('codesInput').value;
-        const lines = input.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(s => s !== "");
-        if (!lines.length) return alert("Введите штрихкоды!");
+        // Очищаем список от пустых строк
+        targetCodesArray = input.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(s => s !== "");
+        
+        if (!targetCodesArray.length) return alert("Список пуст!");
 
-        targetCodes = new Set(lines);
         document.getElementById('screenSetup').style.display = 'none';
         document.getElementById('screenScanner').style.display = 'flex';
         document.getElementById('laser').style.display = 'block';
         updateUI();
-
-        if ('wakeLock' in navigator) try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
-
         initScanner();
     }
 
-    async function initScanner() {
+    function initScanner() {
         if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
 
-        // Облегченные настройки для лучшего фокуса
         const config = {
-            fps: 15, // Плавность без перегрузки
-            qrbox: { width: qrSize, height: qrSize },
+            fps: 10, // Снизили FPS для четкости фокуса
+            qrbox: { width: 280, height: 280 }, // Увеличили зону
             aspectRatio: 1.0,
             videoConstraints: {
                 facingMode: "environment",
-                width: { ideal: 1280 }, // 720p - золотой стандарт
-                height: { ideal: 720 },
-                focusMode: "continuous"
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
             }
         };
 
-        try {
-            await html5QrCode.start({ facingMode: "environment" }, config, (text) => {
-                const rawText = text.trim().toUpperCase();
-                const now = Date.now();
-                
-                const segments = rawText.split(':').map(s => s.trim());
-                let matchedId = null;
-                
-                if (targetCodes.has(rawText)) {
-                    matchedId = rawText;
-                } else {
-                    for (let segment of segments) {
-                        if (targetCodes.has(segment)) {
-                            matchedId = segment;
-                            break;
-                        }
-                    }
-                }
+        html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
+            const raw = decodedText.trim().toUpperCase();
+            const now = Date.now();
 
-                if (matchedId) {
-                    if (!foundCodes.has(matchedId)) {
-                        foundCodes.add(matchedId);
-                        foundLog.unshift({ id: matchedId, time: new Date().toLocaleTimeString('ru-RU') });
-                        saveState();
-                        updateUI();
-                        triggerFeedback('success');
-                        lastScanId = rawText;
-                        lastScanTime = now;
-                    } else {
-                        if (rawText !== lastScanId || (now - lastScanTime > SCAN_COOLDOWN_MS)) {
-                            triggerFeedback('success');
-                            lastScanId = rawText;
-                            lastScanTime = now;
-                        }
-                    }
-                } else {
-                    if (rawText !== lastScanId || (now - lastScanTime > SCAN_COOLDOWN_MS)) {
-                        triggerFeedback('fail');
-                        lastScanId = rawText;
-                        lastScanTime = now;
-                    }
+            // Если этот же текст только что сканировали - игнорим секунду
+            if (raw === lastScanResult && (now - lastScanTime < SCAN_DELAY)) return;
+
+            // ГЛУБОКИЙ ПОИСК: проверяем, есть ли какой-то ID из нашего списка внутри считанной строки
+            let foundMatch = targetCodesArray.find(id => raw.includes(id));
+
+            if (foundMatch) {
+                if (!foundCodes.has(foundMatch)) {
+                    foundCodes.add(foundMatch);
+                    foundLog.unshift({ id: foundMatch, time: new Date().toLocaleTimeString('ru-RU') });
+                    saveState();
+                    updateUI();
                 }
-            });
-            
+                triggerFeedback('success');
+            } else {
+                triggerFeedback('fail');
+            }
+
+            lastScanResult = raw;
+            lastScanTime = now;
+        }).then(() => {
             const cap = html5QrCode.getRunningTrackCapabilities();
-            document.getElementById('torchBtn').style.display = cap.torch ? 'block' : 'none';
-            isAppPaused = false;
-        } catch (err) {
-            console.error("Scanner error", err);
-        }
-    }
-
-    async function softPause() {
-        isAppPaused = true;
-        if (html5QrCode) await html5QrCode.pause();
-        document.getElementById('laser').style.display = 'none';
-    }
-
-    async function softResume() {
-        if (html5QrCode) await html5QrCode.resume();
-        document.getElementById('laser').style.display = 'block';
-        isAppPaused = false;
+            if (cap.torch) document.getElementById('torchBtn').style.display = 'block';
+        });
     }
 
     function triggerFeedback(type) {
         const overlay = document.getElementById('flashOverlay');
-        overlay.style.backgroundColor = type === 'success' ? 'rgba(0, 255, 157, 0.3)' : 'rgba(255, 77, 77, 0.3)';
+        overlay.style.backgroundColor = type === 'success' ? 'rgba(0, 255, 157, 0.4)' : 'rgba(255, 77, 77, 0.4)';
         
-        if (type === 'success' && audioCtx.state !== 'closed') {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (type === 'success') {
             const osc = audioCtx.createOscillator();
             const g = audioCtx.createGain();
             osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
@@ -315,13 +233,13 @@
         }
         
         overlay.style.display = 'block';
-        setTimeout(() => overlay.style.display = 'none', 100);
+        setTimeout(() => overlay.style.display = 'none', 150);
     }
 
     function updateUI() {
         document.getElementById('countFound').innerText = foundCodes.size;
-        document.getElementById('countLeft').innerText = Math.max(0, targetCodes.size - foundCodes.size);
-        document.getElementById('foundItemsList').innerHTML = foundLog.slice(0, 50).map(i => `<li><strong>${i.id}</strong><span style="opacity:0.4">${i.time}</span></li>`).join('');
+        document.getElementById('countLeft').innerText = Math.max(0, targetCodesArray.length - foundCodes.size);
+        document.getElementById('foundItemsList').innerHTML = foundLog.slice(0, 30).map(i => `<li><strong>${i.id}</strong><span>${i.time}</span></li>`).join('');
     }
 
     function saveState() {
@@ -332,29 +250,20 @@
 
     async function toggleTorch() {
         isTorchOn = !isTorchOn;
-        try {
-            await html5QrCode.applyVideoConstraints({ advanced: [{ torch: isTorchOn }] });
-            document.getElementById('torchBtn').innerText = isTorchOn ? "🔦 Фонарик: ВКЛ" : "🔦 Фонарик: ВЫКЛ";
-        } catch (e) {}
+        await html5QrCode.applyVideoConstraints({ advanced: [{ torch: isTorchOn }] });
     }
 
     function clearMemory() {
-        if (confirm("Сбросить данные?")) { localStorage.clear(); location.reload(); }
+        if (confirm("Удалить всё?")) { localStorage.clear(); location.reload(); }
     }
 
     function copyToClipboard() {
         const txt = foundLog.map(i => `${i.id}\t${i.time}`).join('\n');
-        navigator.clipboard.writeText(txt).then(() => alert("Отчет скопирован"));
+        navigator.clipboard.writeText(txt).then(() => alert("Скопировано"));
     }
 
     function pauseApp() {
-        if (wakeLock) wakeLock.release();
-        if (html5QrCode) {
-            html5QrCode.stop().then(() => {
-                document.getElementById('screenScanner').style.display = 'none';
-                document.getElementById('screenSetup').style.display = 'block';
-            });
-        }
+        if (html5QrCode) html5QrCode.stop().then(() => location.reload());
     }
 </script>
 </body>
