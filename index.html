@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0a0f16">
-    <title>Sklad Scanner Elite v8.7</title>
+    <title>Sklad Scanner Elite v8.8</title>
     
     <script src="https://unpkg.com/html5-qrcode"></script>
     
@@ -17,7 +17,7 @@
             --danger: #ff4d4d;
             --accent: #00d4ff;
             --text: #e0e6ed;
-            --qr-size: 280px; 
+            --qr-size: 260px; 
         }
 
         body {
@@ -113,7 +113,7 @@
 <div class="container">
     <div id="screenSetup">
         <div class="card">
-            <h2>Elite Scanner v8.7</h2>
+            <h2>Elite Scanner v8.8</h2>
             <textarea id="codesInput" placeholder="Список ID (по одному в строке)..."></textarea>
             <button class="btn-start" onclick="startApp()">Запустить сканер</button>
             <button class="btn-clear" onclick="clearMemory()">Очистить всё</button>
@@ -150,7 +150,7 @@
     let isTorchOn = false;
     let lastScanResult = null;
     let lastScanTime = 0;
-    const SCAN_DELAY = 1500; // Пауза между вспышками для одного и того же кода
+    const SCAN_DELAY = 1200; 
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -163,7 +163,6 @@
 
     async function startApp() {
         const input = document.getElementById('codesInput').value;
-        // Очищаем список от пустых строк
         targetCodesArray = input.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(s => s !== "");
         
         if (!targetCodesArray.length) return alert("Список пуст!");
@@ -179,25 +178,50 @@
         if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
 
         const config = {
-            fps: 10, // Снизили FPS для четкости фокуса
-            qrbox: { width: 280, height: 280 }, // Увеличили зону
+            fps: 15, // Баланс скорости и точности
+            qrbox: { width: 260, height: 260 }, // Оптимальный квадрат
             aspectRatio: 1.0,
+            formatsToSupport: [ 
+                Html5QrcodeSupportedFormats.EAN_13, 
+                Html5QrcodeSupportedFormats.EAN_8, 
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.QR_CODE, // Добавлено для маркировок
+                Html5QrcodeSupportedFormats.DATA_MATRIX // Добавлено для Честного ЗНАКа
+            ],
             videoConstraints: {
                 facingMode: "environment",
                 width: { ideal: 1280 },
-                height: { ideal: 720 }
+                height: { ideal: 720 },
+                advanced: [{ focusMode: "continuous" }] // Принудительный автофокус
             }
         };
 
         html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
             const raw = decodedText.trim().toUpperCase();
+            
+            // Защита от мусорных срабатываний бликов (слишком короткие коды)
+            if (raw.length < 4) return;
+
             const now = Date.now();
 
-            // Если этот же текст только что сканировали - игнорим секунду
             if (raw === lastScanResult && (now - lastScanTime < SCAN_DELAY)) return;
 
-            // ГЛУБОКИЙ ПОИСК: проверяем, есть ли какой-то ID из нашего списка внутри считанной строки
-            let foundMatch = targetCodesArray.find(id => raw.includes(id));
+            // СТРОГИЙ ПОИСК: разбиваем код и ищем точное совпадение
+            let foundMatch = null;
+            const segments = raw.split(':');
+            
+            // Сначала проверяем код целиком
+            if (targetCodesArray.includes(raw)) {
+                foundMatch = raw;
+            } else {
+                // Если целиком не совпал, проверяем по сегментам
+                for (let seg of segments) {
+                    if (targetCodesArray.includes(seg)) {
+                        foundMatch = seg;
+                        break;
+                    }
+                }
+            }
 
             if (foundMatch) {
                 if (!foundCodes.has(foundMatch)) {
@@ -216,6 +240,11 @@
         }).then(() => {
             const cap = html5QrCode.getRunningTrackCapabilities();
             if (cap.torch) document.getElementById('torchBtn').style.display = 'block';
+        }).catch(err => {
+            console.warn("Camera init warning:", err);
+            // Фолбэк, если устройство не поддерживает advanced focusMode
+            delete config.videoConstraints.advanced;
+            html5QrCode.start({ facingMode: "environment" }, config, /*...*/);
         });
     }
 
@@ -224,12 +253,17 @@
         overlay.style.backgroundColor = type === 'success' ? 'rgba(0, 255, 157, 0.4)' : 'rgba(255, 77, 77, 0.4)';
         
         if (type === 'success') {
+            // Более агрессивный, "кассовый" звук (Square wave)
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             const osc = audioCtx.createOscillator();
             const g = audioCtx.createGain();
-            osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            osc.type = 'square'; // Резкий электронный звук
+            osc.frequency.setValueAtTime(1200, audioCtx.currentTime); 
+            osc.frequency.exponentialRampToValueAtTime(1500, audioCtx.currentTime + 0.1); // Небольшой "взлет" частоты
+            g.gain.setValueAtTime(0.3, audioCtx.currentTime); // Громче
+            g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
             osc.connect(g); g.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.15);
         }
         
         overlay.style.display = 'block';
