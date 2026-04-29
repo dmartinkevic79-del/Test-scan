@@ -15,7 +15,7 @@
         body {
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', Roboto, sans-serif;
             background: radial-gradient(circle at center, #1a1a2e 0%, #0f0f1a 100%);
             color: white;
             display: flex;
@@ -24,7 +24,7 @@
             min-height: 100vh;
         }
 
-        /* Контейнер сканера */
+        /* Контейнер камеры */
         #reader-wrapper {
             position: relative;
             width: 320px;
@@ -32,16 +32,17 @@
             margin-top: 20px;
             border-radius: 20px;
             overflow: hidden;
-            background: black;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            background: #000;
         }
 
         #reader {
-            width: 100%;
-            height: 100%;
+            width: 100% !important;
+            height: 100% !important;
+            border: none !important;
         }
 
-        /* Кастомная рамка 280x280 */
+        /* Рамка 280x280 */
         #custom-overlay {
             position: absolute;
             top: 50%;
@@ -49,25 +50,26 @@
             transform: translate(-50%, -50%);
             width: 280px;
             height: 280px;
-            border: 2px solid var(--glass-border);
+            border: 2px solid var(--primary-color);
             pointer-events: none;
             z-index: 10;
-            box-shadow: 0 0 0 500px rgba(0, 0, 0, 0.5);
+            box-sizing: border-box;
+            box-shadow: 0 0 0 500px rgba(0, 0, 0, 0.5); /* Затемнение вокруг */
         }
 
-        /* Лазерная линия внутри рамки */
+        /* Лазерная линия */
         #laser {
             position: absolute;
             width: 100%;
             height: 2px;
             background-color: var(--primary-color);
-            box-shadow: 0 0 10px var(--primary-color);
+            box-shadow: 0 0 15px var(--primary-color);
             top: 0;
             left: 0;
-            animation: scan 2s infinite linear;
+            animation: scanLine 2s infinite linear;
         }
 
-        @keyframes scan {
+        @keyframes scanLine {
             0% { top: 0; }
             50% { top: 100%; }
             100% { top: 0; }
@@ -77,7 +79,7 @@
         .controls {
             width: 90%;
             max-width: 350px;
-            margin-top: 20px;
+            margin-top: 25px;
             padding: 20px;
             background: var(--glass-bg);
             backdrop-filter: blur(15px);
@@ -87,55 +89,57 @@
         }
 
         .result-display {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             margin-bottom: 15px;
-            padding: 10px;
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 10px;
-            word-break: break-all;
-            min-height: 1.5em;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            min-height: 20px;
+            color: var(--primary-color);
+            font-weight: bold;
         }
 
         .glass-select, .glass-button {
             width: 100%;
-            padding: 12px;
-            margin: 8px 0;
+            padding: 14px;
+            margin: 10px 0;
             border-radius: 12px;
             border: 1px solid var(--glass-border);
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.1);
             color: white;
             font-weight: bold;
-            outline: none;
+            font-size: 1rem;
             cursor: pointer;
             transition: 0.3s;
         }
 
         .glass-button {
-            background: linear-gradient(135deg, rgba(0, 255, 204, 0.3), rgba(0, 153, 255, 0.3));
+            background: linear-gradient(135deg, rgba(0, 255, 204, 0.4), rgba(0, 153, 255, 0.4));
+            border: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .glass-button:hover:not(:disabled) {
-            background: rgba(0, 255, 204, 0.5);
+            background: rgba(0, 255, 204, 0.6);
+            transform: translateY(-2px);
         }
 
         .glass-button:disabled {
-            opacity: 0.5;
+            opacity: 0.3;
             cursor: not-allowed;
         }
 
         .glass-select option {
             background: #1a1a2e;
-            color: white;
         }
 
-        /* Подпись */
         .copyright {
             margin-top: auto;
             padding: 20px;
             font-size: 0.8rem;
             color: rgba(255, 255, 255, 0.8);
             letter-spacing: 1px;
-            text-transform: uppercase;
             font-weight: 600;
         }
     </style>
@@ -150,18 +154,18 @@
     </div>
 
     <div class="controls">
-        <div id="result" class="result-display">Ожидание сканирования...</div>
+        <div id="result" class="result-display">ОЖИДАНИЕ КОДА...</div>
         
         <select id="route-select" class="glass-select">
-            <option value="1">Маршрут №8</option>
-            <option value="2">Маршрут №948</option>
-            <option value="3">Маршрут №942</option>
-            <option value="4">Маршрут №9444</option>
-            <option value="5">Маршрут №18</option>
-            <option value="6">Маршрут №946</option>
-            <option value="7">Маршрут №943</option>
-            <option value="8">Маршрут №919</option>
-            <option value="9">Маршрут №945</option>
+            <option value="1">МАРШРУТ №1</option>
+            <option value="2">МАРШРУТ №2</option>
+            <option value="3">МАРШРУТ №3</option>
+            <option value="4">МАРШРУТ №4</option>
+            <option value="5">МАРШРУТ №5</option>
+            <option value="6">МАРШРУТ №6</option>
+            <option value="7">МАРШРУТ №7</option>
+            <option value="8">МАРШРУТ №8</option>
+            <option value="9">МАРШРУТ №9</option>
         </select>
 
         <button id="send-btn" class="glass-button">ОТПРАВИТЬ В ТАБЛИЦУ</button>
@@ -172,44 +176,41 @@
     </div>
 
 <script>
-    const GOOGLE_SCRIPT_URL = 'AKfycbz3wlTxGMw4miB93yAJ6efDwa_FQAazKGpvBPYlB36Nn1BKnOk_ew_Je-ZmMgpCCT5SPA';
+    // Вставьте сюда вашу ссылку из Google Apps Script
+    const GOOGLE_SCRIPT_URL = 'ВАША_ССЫЛКА_ИЗ_СКРИНШОТА';
+    
     let lastScannedId = null;
 
     function onScanSuccess(decodedText) {
-        // Логика извлечения ID из формата $1:1:ID:ДАТА
+        // Логика извлечения ID из середины ($1:1:ID:ДАТА)
         const parts = decodedText.split(':');
-        
+        let extractedId = decodedText;
+
         if (parts.length >= 3) {
-            const extractedId = parts[2]; // Берем третий элемент
-            
-            // Если код изменился или мы продолжаем держать его в фокусе
-            if (lastScannedId !== extractedId) {
-                lastScannedId = extractedId;
-                document.getElementById('result').innerText = "ID: " + extractedId;
-                document.getElementById('result').style.color = "#00ffcc";
-                
-                // Сигнал (звуковой или визуальный) можно добавить здесь
-                console.log("Успешно считан ID:", extractedId);
-            }
-        } else {
-            // Если формат не совпадает, выводим код как есть
-            lastScannedId = decodedText;
-            document.getElementById('result').innerText = decodedText;
+            extractedId = parts[2];
+        }
+        
+        if (lastScannedId !== extractedId) {
+            lastScannedId = extractedId;
+            document.getElementById('result').innerText = "ID: " + extractedId;
+            // Можно добавить легкую вибрацию при сканировании
+            if (navigator.vibrate) navigator.vibrate(100);
         }
     }
 
+    // Инициализация сканера
     const html5QrCode = new Html5Qrcode("reader");
     const config = { 
         fps: 20, 
         qrbox: { width: 280, height: 280 },
-        formatsToSupport: [ 
-            Html5QrcodeSupportedFormats.EAN_13, 
-            Html5QrcodeSupportedFormats.CODE_128, 
-            Html5QrcodeSupportedFormats.EAN_8 
-        ]
+        aspectRatio: 1.0
     };
 
-    html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
+    html5QrCode.start(
+        { facingMode: "environment" }, 
+        config, 
+        onScanSuccess
+    ).catch(err => console.error("Ошибка запуска камеры:", err));
 
     // Обработка кнопки отправки
     document.getElementById('send-btn').addEventListener('click', function() {
@@ -217,7 +218,7 @@
         const btn = this;
 
         if (!lastScannedId) {
-            alert("Сначала отсканируйте код!");
+            alert("Сначала отсканируйте штрих-код!");
             return;
         }
 
@@ -235,13 +236,13 @@
             })
         })
         .then(() => {
-            alert(`Успешно! Маршрут ${route}, ID ${lastScannedId} внесен.`);
+            alert("Данные успешно внесены в таблицу!");
             btn.innerText = "ОТПРАВИТЬ В ТАБЛИЦУ";
             btn.disabled = false;
         })
         .catch(error => {
             console.error('Ошибка:', error);
-            alert("Ошибка сети при отправке");
+            alert("Ошибка связи с таблицей.");
             btn.disabled = false;
             btn.innerText = "ОТПРАВИТЬ В ТАБЛИЦУ";
         });
