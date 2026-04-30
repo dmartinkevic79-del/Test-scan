@@ -3,113 +3,159 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Scanner Pro</title>
+    <title>Складской Сканер</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f2f5; margin: 0; padding: 20px; }
-        #reader { width: 100%; max-width: 500px; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .controls { margin: 20px 0; width: 100%; max-width: 500px; display: flex; gap: 10px; }
-        select { flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
-        #result { margin-top: 20px; padding: 15px; border-radius: 5px; background: white; min-width: 250px; text-align: center; font-weight: bold; }
-        .duplicate-text { color: #dc3545; animation: shake 0.5s; }
-        @keyframes shake { 0%, 100% {transform: translateX(0);} 25% {transform: translateX(-5px);} 75% {transform: translateX(5px);} }
+        body { font-family: Arial, sans-serif; padding: 10px; margin: 0; transition: background-color 0.2s; }
+        #reader { width: 100%; max-width: 500px; margin: 0 auto 15px auto; }
+        .controls { text-align: center; margin-bottom: 15px; }
+        select, button { padding: 12px; font-size: 16px; margin: 5px; width: 90%; max-width: 400px; border-radius: 8px; }
+        button.send-btn { background-color: #4CAF50; color: white; border: none; font-weight: bold; }
+        #result { font-size: 18px; font-weight: bold; text-align: center; margin-bottom: 10px; height: 25px;}
+        ul { list-style-type: none; padding: 0; }
+        li { padding: 8px; border-bottom: 1px solid #ddd; font-size: 14px; }
+        
+        /* Стили для вспышек экрана */
+        .flash-green { background-color: rgba(0, 255, 0, 0.4) !important; }
+        .flash-red { background-color: rgba(255, 0, 0, 0.4) !important; }
     </style>
 </head>
 <body>
 
-<div id="reader"></div>
+    <div class="controls">
+        <select id="route-select">
+            <option value="Маршрут 1">Маршрут 1</option>
+            <option value="Маршрут 2">Маршрут 2</option>
+        </select>
+    </div>
 
-<div class="controls">
-    <select id="route-select">
-        <option value="Route_1">Маршрут 1</option>
-        <option value="Route_2">Маршрут 2</option>
-    </select>
-</div>
+    <div id="reader"></div>
+    <div id="result">Ожидание сканирования...</div>
 
-<div id="result">Ожидание сканирования...</div>
+    <div class="controls">
+        <button class="send-btn" onclick="sendDataToGoogleSheets()">Отправить в таблицу</button>
+    </div>
+
+    <h3>История сканирования:</h3>
+    <ul id="history-list"></ul>
 
 <script>
-// --- КОНФИГУРАЦИЯ ---
-const GOOGLE_URL = "https://script.google.com/macros/s/AKfycbwiDuT4Vk6l2tIv2kBMbeqbgcEyC_f-jicNTxLgdTbKed-qhha3sWdVHwaARj3uTljQ/exec"; 
-let historyData = { "Route_1": [], "Route_2": [] };
-let lastScannedId = null;
+    let historyData = { "Маршрут 1": [], "Маршрут 2": [] };
+    let lastScannedId = null;
+    let html5QrcodeScanner;
 
-// --- ЗВУКОВОЙ ДВИЖОК ---
-function playBeep(type = 'success') {
-    try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-
-        if (type === 'success') {
+    // Звук только для успешного сканирования
+    function playSuccessBeep() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            if (ctx.state === 'suspended') ctx.resume(); 
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
             osc.frequency.setValueAtTime(880, ctx.currentTime);
-            osc.start(); osc.stop(ctx.currentTime + 0.1);
-        } else {
-            osc.frequency.setValueAtTime(330, ctx.currentTime);
-            osc.start(); osc.stop(ctx.currentTime + 0.2);
-            setTimeout(() => {
-                const osc2 = ctx.createOscillator();
-                const gain2 = ctx.createGain();
-                osc2.connect(gain2); gain2.connect(ctx.destination);
-                gain2.gain.setValueAtTime(0.1, ctx.currentTime);
-                osc2.frequency.setValueAtTime(330, ctx.currentTime);
-                osc2.start(); osc2.stop(ctx.currentTime + 0.2);
-            }, 250);
-        }
-    } catch(e) { console.error("Audio error", e); }
-}
-
-// --- ОТПРАВКА ДАННЫХ ---
-async function sendToGoogle(id, route, time) {
-    try {
-        await fetch(GOOGLE_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            body: JSON.stringify({ id, route, time })
-        });
-    } catch (e) { console.error("Ошибка сети:", e); }
-}
-
-// --- ЛОГИКА СКАНЕРА ---
-function onScanSuccess(decodedText) {
-    const parts = decodedText.split(':');
-    const id = (parts.length >= 3 ? parts[2] : decodedText).trim();
-    const r = document.getElementById('route-select').value;
-    const resultDisplay = document.getElementById('result');
-
-    // Проверка на дубликат в текущей сессии
-    if (historyData[r].some(item => item.id === id)) {
-        if (lastScannedId !== id) {
-            playBeep('error');
-            resultDisplay.innerHTML = `<span class="duplicate-text">ДУБЛИКАТ: ${id}</span>`;
-            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-            lastScannedId = id;
-        }
-        return;
+            gain.gain.value = 0.1;
+            
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(ctx.currentTime); 
+            osc.stop(ctx.currentTime + 0.1);
+        } catch(e) { console.error("Audio error", e); }
     }
 
-    // Новый код
-    lastScannedId = id;
-    const timeNow = new Date().toLocaleTimeString().slice(0, 5);
-    
-    playBeep('success');
-    if (navigator.vibrate) navigator.vibrate(100);
-    
-    resultDisplay.innerText = `ОТПРАВЛЕНО: ${id}`;
-    resultDisplay.classList.remove('duplicate-text');
+    // Функция моргания экраном
+    function triggerFlash(colorClass) {
+        document.body.classList.add(colorClass);
+        setTimeout(() => { document.body.classList.remove(colorClass); }, 300);
+    }
 
-    // Сохраняем локально и отправляем в облако
-    historyData[r].unshift({ id, time: timeNow });
-    sendToGoogle(id, r, timeNow);
-}
+    // Отрисовка истории на экране
+    function updateHistoryUI() {
+        const r = document.getElementById('route-select').value;
+        const list = document.getElementById('history-list');
+        list.innerHTML = '';
+        historyData[r].forEach(item => {
+            let li = document.createElement('li');
+            li.textContent = `ID: ${item.id} | Время: ${item.time}`;
+            list.appendChild(li);
+        });
+    }
 
-// Инициализация камеры
-const html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
-html5QrcodeScanner.render(onScanSuccess);
+    document.getElementById('route-select').addEventListener('change', updateHistoryUI);
 
+    function onScanSuccess(decodedText) {
+        const parts = decodedText.split(':');
+        const id = (parts.length >= 3 ? parts[2] : decodedText).trim();
+        const r = document.getElementById('route-select').value;
+        const resultDisplay = document.getElementById('result');
+
+        const exists = historyData[r].some(item => item.id === id);
+
+        if (exists) {
+            // ДУБЛИКАТ: Моргает красным, БЕЗ звука
+            if (lastScannedId !== id) { 
+                triggerFlash('flash-red');
+                resultDisplay.innerHTML = `<span style="color:red">ДУБЛИКАТ: ${id}</span>`;
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                lastScannedId = id; 
+            }
+            return;
+        }
+
+        // НОВЫЙ КОД: Моргает зеленым, издает звук
+        lastScannedId = id;
+        triggerFlash('flash-green');
+        playSuccessBeep();
+        
+        // Фиксируем время
+        historyData[r].unshift({ id: id, time: new Date().toLocaleTimeString().slice(0, 5) });
+        updateHistoryUI();
+        
+        resultDisplay.innerHTML = `ID: ${id} (Успешно)`;
+        if (navigator.vibrate) navigator.vibrate(100);
+    }
+
+    // Отправка в Google
+    async function sendDataToGoogleSheets() {
+        const r = document.getElementById('route-select').value;
+        const dataToSend = historyData[r];
+
+        if (dataToSend.length === 0) return alert('Нет данных для отправки');
+
+        const btn = document.querySelector('.send-btn');
+        btn.textContent = 'Отправка...';
+        btn.disabled = true;
+
+        const payload = { route: r, data: dataToSend };
+        
+        // ВСТАВЬТЕ СЮДА ВАШУ ССЫЛКУ ИЗ GOOGLE APPS SCRIPT!
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwiDuT4Vk6l2tIv2kBMbeqbgcEyC_f-jicNTxLgdTbKed-qhha3sWdVHwaARj3uTljQ/exec'; 
+
+        try {
+            const response = await fetch(WEB_APP_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' }, 
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+            if (result.status === 'success') {
+                alert('Данные успешно отправлены в таблицу!');
+                historyData[r] = []; // Очищаем историю после отправки
+                updateHistoryUI();
+            } else {
+                alert('Ошибка: ' + result.message);
+            }
+        } catch (error) {
+            alert('Не удалось отправить данные. Проверьте интернет.');
+        } finally {
+            btn.textContent = 'Отправить в таблицу';
+            btn.disabled = false;
+        }
+    }
+
+    // Запуск камеры
+    html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
+    html5QrcodeScanner.render(onScanSuccess);
 </script>
 </body>
 </html>
