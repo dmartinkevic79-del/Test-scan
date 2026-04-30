@@ -26,22 +26,27 @@
             min-height: 100vh;
         }
 
-        /* Оболочка сканера */
+        /* Оболочка сканера - строго квадратная */
         .scanner-wrap {
             position: relative;
             width: 100%;
             max-width: 400px;
             margin: 0 auto;
             border-radius: 24px;
-            overflow: hidden;
+            overflow: hidden; /* Важно: обрезает всё, что выходит за края */
             border: 1px solid var(--glass-border);
             background: #000;
+            aspect-ratio: 1 / 1;
         }
 
-        #reader { width: 100% !important; border: none !important; position: relative; }
+        #reader { width: 100% !important; height: 100% !important; border: none !important; position: relative; padding: 0 !important; }
         #reader img { display: none !important; }
+        #reader video { object-fit: cover !important; width: 100% !important; height: 100% !important; border-radius: 24px; }
+        
+        /* Скрываем остатки стандартного интерфейса библиотеки, если они есть */
+        #reader > div:not(:first-child) { display: none !important; }
 
-        /* ЛАЗЕР */
+        /* НАША ИДЕАЛЬНАЯ КАСТОМНАЯ РАМКА */
         .laser-container {
             position: absolute;
             top: 50%;
@@ -50,12 +55,29 @@
             height: 250px;
             transform: translate(-50%, -50%);
             z-index: 10;
-            pointer-events: none;
-            overflow: hidden; 
+            pointer-events: none; /* Пропускает клики сквозь себя */
+            
+            /* Рисуем свои ровные белые уголки с помощью градиентов */
+            background: 
+                linear-gradient(to right, #fff 4px, transparent 4px) 0 0,
+                linear-gradient(to bottom, #fff 4px, transparent 4px) 0 0,
+                linear-gradient(to left, #fff 4px, transparent 4px) 100% 0,
+                linear-gradient(to bottom, #fff 4px, transparent 4px) 100% 0,
+                linear-gradient(to right, #fff 4px, transparent 4px) 0 100%,
+                linear-gradient(to top, #fff 4px, transparent 4px) 0 100%,
+                linear-gradient(to left, #fff 4px, transparent 4px) 100% 100%,
+                linear-gradient(to top, #fff 4px, transparent 4px) 100% 100%;
+            background-repeat: no-repeat;
+            background-size: 35px 35px; /* Длина уголков */
+            
+            /* Полупрозрачное затемнение вокруг рамки */
+            box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.5);
         }
 
+        /* Привязанный лазер */
         .laser-line {
-            width: 100%;
+            width: calc(100% - 8px);
+            left: 4px;
             height: 3px;
             background: var(--accent-red);
             box-shadow: 0 0 15px 2px var(--accent-red);
@@ -64,10 +86,10 @@
         }
 
         @keyframes scanAnim {
-            0% { top: 0%; opacity: 0; }
+            0% { top: 4px; opacity: 0; }
             10% { opacity: 1; }
             90% { opacity: 1; }
-            100% { top: 100%; opacity: 0; }
+            100% { top: calc(100% - 7px); opacity: 0; }
         }
 
         /* Стеклянные элементы */
@@ -112,12 +134,12 @@
 
         /* КОПИРАЙТ АВТОРА */
         .author-credits {
-            margin-top: auto; /* Прижимает текст к низу экрана */
+            margin-top: auto; 
             padding-top: 30px;
             padding-bottom: 10px;
             text-align: center;
             font-size: 12px;
-            color: #636366; /* Фирменный серый цвет Apple для сносок */
+            color: #636366; 
             font-weight: 500;
             letter-spacing: 0.5px;
             line-height: 1.5;
@@ -142,7 +164,7 @@
 
     <div class="scanner-wrap">
         <div id="reader"></div>
-        <div class="laser-container">
+        <div class="laser-container" id="custom-laser" style="display: none;">
             <div class="laser-line"></div>
         </div>
     </div>
@@ -169,6 +191,17 @@
     let lastId = null;
     let isLocked = false;
     let audioCtx = null;
+
+    // Умный показ лазера: появляется только когда камера реально включилась
+    const laserBox = document.getElementById('custom-laser');
+    const observer = new MutationObserver(() => {
+        if (document.querySelector('#reader video')) {
+            laserBox.style.display = 'block';
+        } else {
+            laserBox.style.display = 'none';
+        }
+    });
+    observer.observe(document.getElementById('reader'), { childList: true, subtree: true });
 
     function initAudio() {
         if (!audioCtx) {
@@ -280,7 +313,7 @@
         status.textContent = 'Сохранение...';
 
         // ВАЖНО: ВСТАВЬТЕ СЮДА ВАШ URL ИЗ GOOGLE APPS SCRIPT
-        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyYdqLYYn0z6m8UgpS6mpWtw199xB0Eqbm6Oc2fI8haklkhd3ajBuI4Tu_OHvaopwb0/exec'; 
+        const WEB_APP_URL = 'ВАШ_URL_ИЗ_APPS_SCRIPT'; 
 
         try {
             const resp = await fetch(WEB_APP_URL, {
@@ -304,9 +337,9 @@
         }
     }
 
+    // ВАЖНО: Убран параметр qrbox. Это отключает стандартные конфликтующие рамки библиотеки
     const scanner = new Html5QrcodeScanner("reader", { 
         fps: 20, 
-        qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0
     });
     scanner.render(onScanSuccess);
