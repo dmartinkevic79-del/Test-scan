@@ -2,267 +2,279 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scanner Pro Glass Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Scanner Pro Glass</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         :root {
             --ios-bg: #000000;
-            --glass-bg: rgba(28, 28, 30, 0.75);
-            --glass-border: rgba(255, 255, 255, 0.12);
+            --glass-bg: rgba(28, 28, 30, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.1);
             --accent-green: #30d158;
             --accent-red: #ff453a;
-            --laser-color: rgba(255, 69, 58, 0.8);
             --text-main: #ffffff;
+            --text-secondary: #8e8e93;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: var(--ios-bg);
-            background-image: radial-gradient(circle at 50% -20%, #1c1c1e, #000000);
+            background-image: radial-gradient(circle at 50% 0%, #1c1c1e, #000000);
             color: var(--text-main);
             margin: 0;
-            padding: env(safe-area-inset-top) 15px 20px 15px;
+            padding: 20px 16px;
             min-height: 100vh;
-            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
         }
 
         /* Контейнер сканера */
-        .scanner-wrapper {
+        .scanner-container {
             position: relative;
             width: 100%;
-            max-width: 500px;
-            margin: 0 auto 20px auto;
-            border-radius: 24px;
+            max-width: 400px;
+            margin: 0 auto 20px;
+            border-radius: 30px;
             overflow: hidden;
             border: 1px solid var(--glass-border);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
             background: #000;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
         }
 
         #reader { width: 100% !important; border: none !important; }
 
-        /* Бегающий лазер */
-        .laser {
+        /* Ограничитель лазера внутри квадрата */
+        .laser-box {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: var(--laser-color);
-            box-shadow: 0 0 15px 2px var(--laser-color);
-            z-index: 10;
+            top: 50%;
+            left: 50%;
+            width: 250px; /* Должно совпадать с qrbox */
+            height: 250px;
+            transform: translate(-50%, -50%);
             pointer-events: none;
-            animation: scanMove 2.5s infinite ease-in-out;
-            display: none; /* Включается при работе сканера */
+            z-index: 10;
         }
 
-        @keyframes scanMove {
-            0% { top: 15%; opacity: 0.2; }
-            50% { top: 85%; opacity: 1; }
-            100% { top: 15%; opacity: 0.2; }
+        .laser-line {
+            width: 100%;
+            height: 2px;
+            background: var(--accent-red);
+            box-shadow: 0 0 12px 2px var(--accent-red);
+            position: absolute;
+            animation: laserMove 3s infinite ease-in-out;
+            opacity: 0.7;
         }
 
-        /* Стеклянные карточки */
+        @keyframes laserMove {
+            0%, 100% { top: 0; }
+            50% { top: 100%; }
+        }
+
+        /* Дизайн карточек */
         .glass-card {
             background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
             border: 1px solid var(--glass-border);
             border-radius: 20px;
-            padding: 18px;
-            margin-bottom: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
         }
 
-        select {
-            width: 100%;
-            background: transparent;
-            color: white;
-            border: none;
-            font-size: 18px;
-            font-weight: 500;
-            appearance: none;
-            outline: none;
-            text-align: center;
-        }
-
-        .btn-ios {
-            display: block;
-            width: 100%;
-            padding: 18px;
-            font-size: 17px;
-            font-weight: 600;
-            border-radius: 16px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            text-align: center;
-            background: var(--accent-green);
-            color: #000;
-            box-shadow: 0 4px 15px rgba(48, 209, 88, 0.3);
-        }
-
-        .btn-ios:active { transform: scale(0.96); opacity: 0.8; }
-        .btn-ios:disabled { background: #3a3a3c; color: #8e8e93; box-shadow: none; }
-
-        #result-badge {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 40px;
-            margin: 10px 0;
-            font-size: 20px;
-            font-weight: 600;
-            transition: all 0.3s;
-        }
-
-        .history-item {
+        .route-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 14px 16px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent-green);
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        select {
+            background: transparent;
+            color: white;
+            border: none;
+            font-size: 17px;
+            font-weight: 600;
+            outline: none;
+            width: 100%;
+        }
+
+        /* Кнопка отправки */
+        .ios-btn {
+            background: var(--accent-green);
+            color: black;
+            border: none;
+            padding: 18px;
+            border-radius: 16px;
+            font-size: 17px;
+            font-weight: 700;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 10px;
+        }
+
+        .ios-btn:active { transform: scale(0.96); opacity: 0.9; }
+        .ios-btn:disabled { background: #3a3a3c; color: #8e8e93; }
+
+        #result-display {
+            text-align: center;
+            font-size: 22px;
+            font-weight: 700;
+            margin: 15px 0;
+            min-height: 28px;
+            letter-spacing: -0.5px;
+        }
+
+        /* Список истории */
+        .history-list { list-style: none; padding: 0; margin: 0; }
+        .history-card {
+            background: rgba(255, 255, 255, 0.04);
             margin-bottom: 8px;
-            border: 1px solid rgba(255,255,255,0.05);
+            padding: 12px 16px;
+            border-radius: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        .time-tag { color: #8e8e93; font-size: 13px; font-family: monospace; }
+        .time { color: var(--text-secondary); font-size: 14px; font-variant-numeric: tabular-nums; }
         
-        /* Вспышки */
-        .flash-success { background-color: rgba(48, 209, 88, 0.15) !important; }
-        .flash-error { background-color: rgba(255, 69, 58, 0.15) !important; }
-
-        .dup-alert { color: var(--accent-red); animation: shake 0.4s; }
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
+        .flash-red { background-color: rgba(255, 69, 58, 0.2) !important; }
+        .flash-green { background-color: rgba(48, 209, 88, 0.2) !important; }
     </style>
 </head>
 <body>
 
     <div class="glass-card">
-        <select id="route-select">
-            <option value="Маршрут 8">Маршрут 8</option>
-            <option value="Маршрут 942">Маршрут 942</option>
-            <option value="Маршрут 943">Маршрут 943</option>
-            <option value="Маршрут 944">Маршрут 944</option>
-            <option value="Маршрут 18">Маршрут 18</option>
-            <option value="Маршрут 6">Маршрут 6</option>
-            <option value="Маршрут 7">Маршрут 7</option>
-            <option value="Маршрут 8">Маршрут 8</option>
-            <option value="Маршрут 9">Маршрут 9</option>
-        </select>
+        <div class="route-header">
+            <span><span class="status-dot"></span>Выбор Маршрута</span>
+            <select id="route-select">
+                <option value="Маршрут 8">Маршрут 8</option>
+                <option value="Маршрут 944">Маршрут 944</option>
+                <option value="Маршрут 942">Маршрут 942</option>
+                <option value="Маршрут 4">Маршрут 4</option>
+                <option value="Маршрут 5">Маршрут 5</option>
+                <option value="Маршрут 6">Маршрут 6</option>
+                <option value="Маршрут 7">Маршрут 7</option>
+                <option value="Маршрут 8">Маршрут 8</option>
+                <option value="Маршрут 9">Маршрут 9</option>
+            </select>
+        </div>
     </div>
 
-    <div class="scanner-wrapper">
+    <div class="scanner-container">
         <div id="reader"></div>
-        <div class="laser" id="scanner-laser"></div>
+        <div class="laser-box">
+            <div class="laser-line"></div>
+        </div>
     </div>
-    
-    <div id="result-badge">Ожидание...</div>
 
-    <button class="btn-ios" id="submit-btn" onclick="sendDataToGoogleSheets()">
-        Отправить данные
+    <div id="result-display">Ожидание...</div>
+
+    <button class="ios-btn" id="submit-btn" onclick="sendDataToGoogleSheets()">
+        Отправить данные (0)
     </button>
 
     <div style="margin-top: 30px;">
-        <div style="display:flex; justify-content: space-between; margin-bottom: 10px; align-items: center;">
-            <h4 style="margin:0">История</h4>
-            <span id="counter" style="color: var(--accent-green); font-weight: bold;">0</span>
-        </div>
-        <div id="history-list">
-            </div>
+        <h4 style="margin-left: 5px; color: var(--text-secondary)">ИСТОРИЯ СКАНИРОВАНИЯ</h4>
+        <div id="history-container"></div>
     </div>
 
 <script>
     let historyData = {};
     for(let i=1; i<=9; i++) { historyData[`Маршрут ${i}`] = []; }
     let lastScannedId = null;
+    let isSending = false;
 
-    // Звук успеха (более мягкий)
-    function playSuccessSound() {
+    // Звук
+    function playBeep() {
         try {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             const osc = ctx.createOscillator();
             const g = ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(1200, ctx.currentTime);
-            g.gain.setValueAtTime(0.05, ctx.currentTime);
+            osc.frequency.setValueAtTime(1000, ctx.currentTime);
             g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.1);
             osc.connect(g); g.connect(ctx.destination);
             osc.start(); osc.stop(ctx.currentTime + 0.1);
         } catch(e) {}
     }
 
-    function triggerEffect(type) {
-        const cls = type === 'success' ? 'flash-success' : 'flash-error';
-        document.body.classList.add(cls);
-        setTimeout(() => document.body.classList.remove(cls), 400);
+    function flash(color) {
+        document.body.classList.add('flash-' + color);
+        setTimeout(() => document.body.classList.remove('flash-' + color), 300);
     }
 
     function updateUI() {
         const r = document.getElementById('route-select').value;
-        const container = document.getElementById('history-list');
+        const container = document.getElementById('history-container');
         container.innerHTML = '';
         
         historyData[r].forEach(item => {
             let div = document.createElement('div');
-            div.className = 'history-item';
-            div.innerHTML = `<span>${item.id}</span> <span class="time-tag">${item.time}</span>`;
+            div.className = 'history-card';
+            div.innerHTML = `<span>${item.id}</span><span class="time">${item.time}</span>`;
             container.appendChild(div);
         });
         
-        document.getElementById('counter').textContent = historyData[r].length;
-        document.getElementById('submit-btn').textContent = `Отправить ${r} (${historyData[r].length})`;
-        document.getElementById('submit-btn').disabled = historyData[r].length === 0;
+        const btn = document.getElementById('submit-btn');
+        btn.textContent = `Отправить ${r} (${historyData[r].length})`;
+        btn.disabled = historyData[r].length === 0 || isSending;
     }
 
     function onScanSuccess(decodedText) {
-        // ЛОГИКА ФИЛЬТРАЦИИ ID:
-        // Если текст содержит ":", разделяем и берем 3-й элемент (индекс 2)
+        if (isSending) return; // Блокируем скан во время отправки
+
+        // ЛОГИКА ФИЛЬТРАЦИИ: берем 3-ю часть если есть двоеточия
         const parts = decodedText.split(':');
         let id = (parts.length >= 3) ? parts[2].trim() : decodedText.trim();
         
         const r = document.getElementById('route-select').value;
-        const badge = document.getElementById('result-badge');
+        const display = document.getElementById('result-display');
 
         const exists = historyData[r].some(item => item.id === id);
 
         if (exists) {
-            if (lastScannedId !== id) { 
-                triggerEffect('error');
-                badge.innerHTML = `<span class="dup-alert">ДУБЛИКАТ</span>`;
+            if (lastScannedId !== id) {
+                flash('red');
+                display.style.color = 'var(--accent-red)';
+                display.textContent = 'ДУБЛИКАТ';
                 if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-                lastScannedId = id; 
+                lastScannedId = id;
             }
             return;
         }
 
         lastScannedId = id;
-        triggerEffect('success');
-        playSuccessSound();
+        flash('green');
+        playBeep();
         
-        historyData[r].unshift({ id: id, time: new Date().toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'}) });
+        historyData[r].unshift({ id: id, time: new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}) });
         updateUI();
         
-        badge.style.color = 'var(--accent-green)';
-        badge.textContent = id;
+        display.style.color = 'var(--accent-green)';
+        display.textContent = id;
         if (navigator.vibrate) navigator.vibrate(40);
     }
 
     async function sendDataToGoogleSheets() {
         const r = document.getElementById('route-select').value;
-        const currentRouteData = historyData[r];
-        if (currentRouteData.length === 0) return;
+        if (historyData[r].length === 0) return;
 
+        isSending = true;
         const btn = document.getElementById('submit-btn');
-        const badge = document.getElementById('result-badge');
+        const display = document.getElementById('result-display');
         
+        btn.textContent = 'СОХРАНЕНИЕ...';
         btn.disabled = true;
-        btn.textContent = 'Сохранение...';
 
         const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwiDuT4Vk6l2tIv2kBMbeqbgcEyC_f-jicNTxLgdTbKed-qhha3sWdVHwaARj3uTljQ/exec'; 
 
@@ -270,38 +282,32 @@
             const response = await fetch(WEB_APP_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain' }, 
-                body: JSON.stringify({ route: r, data: currentRouteData })
+                body: JSON.stringify({ route: r, data: historyData[r] })
             });
 
             const result = await response.json();
             if (result.status === 'success') {
-                historyData[r] = []; 
-                updateUI();
-                lastScannedId = null;
-                badge.textContent = 'Успешно отправлено';
-                setTimeout(() => { badge.textContent = 'Ожидание...'; }, 2000);
+                historyData[r] = []; // Очищаем данные
+                lastScannedId = null; // ВАЖНО: Сбрасываем ID, чтобы сканер ожил
+                display.textContent = 'Успешно отправлено';
+                display.style.color = 'var(--accent-green)';
             }
         } catch (error) {
-            alert('Ошибка сети');
-            btn.disabled = false;
+            alert('Ошибка сети. Проверьте интернет.');
+        } finally {
+            isSending = false;
+            updateUI();
+            setTimeout(() => { if(!isSending) display.textContent = 'Готов к сканированию'; }, 2000);
         }
     }
 
-    // Запуск
+    // Инициализация
     const html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-        fps: 25, 
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
-        showTorchButtonIfSupported: true
+        fps: 20, 
+        qrbox: 250, // Квадрат 250x250
+        aspectRatio: 1.0
     });
-
     html5QrcodeScanner.render(onScanSuccess);
-
-    // Включаем лазер при старте
-    setTimeout(() => {
-        const laser = document.getElementById('scanner-laser');
-        if(laser) laser.style.display = 'block';
-    }, 1000);
 
     document.getElementById('route-select').addEventListener('change', updateUI);
     updateUI();
