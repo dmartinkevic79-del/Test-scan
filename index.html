@@ -2,22 +2,24 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Складской Сканер</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Складской Сканер v2</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: Arial, sans-serif; padding: 10px; margin: 0; transition: background-color 0.2s; }
-        #reader { width: 100%; max-width: 500px; margin: 0 auto 15px auto; }
-        .controls { text-align: center; margin-bottom: 15px; }
-        select, button { padding: 12px; font-size: 16px; margin: 5px; width: 90%; max-width: 400px; border-radius: 8px; }
-        button.send-btn { background-color: #4CAF50; color: white; border: none; font-weight: bold; }
-        #result { font-size: 18px; font-weight: bold; text-align: center; margin-bottom: 10px; height: 25px;}
-        ul { list-style-type: none; padding: 0; }
-        li { padding: 8px; border-bottom: 1px solid #ddd; font-size: 14px; }
-        
-        /* Стили для вспышек экрана */
-        .flash-green { background-color: rgba(0, 255, 0, 0.4) !important; }
-        .flash-red { background-color: rgba(255, 0, 0, 0.4) !important; }
+        body { font-family: -apple-system, sans-serif; padding: 10px; margin: 0; transition: background-color 0.2s; background-color: #f4f7f6; }
+        #reader { width: 100%; max-width: 500px; margin: 0 auto 15px auto; border-radius: 12px; overflow: hidden; border: 2px solid #ccc; }
+        .controls { text-align: center; margin-bottom: 10px; }
+        select, button { padding: 15px; font-size: 16px; margin: 5px; width: 95%; max-width: 400px; border-radius: 10px; border: 1px solid #ddd; }
+        select { background: white; font-weight: bold; }
+        button.send-btn { background-color: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        button.send-btn:disabled { background-color: #ccc; }
+        #result { font-size: 18px; font-weight: bold; text-align: center; margin: 10px 0; height: 30px; color: #333; }
+        .history-container { background: white; border-radius: 12px; padding: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        ul { list-style-type: none; padding: 0; margin: 0; }
+        li { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; display: flex; justify-content: space-between; }
+        .flash-green { background-color: #c3e6cb !important; }
+        .flash-red { background-color: #f5c6cb !important; }
+        .dup { color: #721c24; background: #f8d7da; padding: 2px 5px; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -26,136 +28,137 @@
         <select id="route-select">
             <option value="Маршрут 1">Маршрут 1</option>
             <option value="Маршрут 2">Маршрут 2</option>
+            <option value="Маршрут 3">Маршрут 3</option>
+            <option value="Маршрут 4">Маршрут 4</option>
+            <option value="Маршрут 5">Маршрут 5</option>
+            <option value="Маршрут 6">Маршрут 6</option>
+            <option value="Маршрут 7">Маршрут 7</option>
+            <option value="Маршрут 8">Маршрут 8</option>
+            <option value="Маршрут 9">Маршрут 9</option>
         </select>
     </div>
 
     <div id="reader"></div>
-    <div id="result">Ожидание сканирования...</div>
+    <div id="result">Готов к работе</div>
 
     <div class="controls">
-        <button class="send-btn" onclick="sendDataToGoogleSheets()">Отправить в таблицу</button>
+        <button class="send-btn" id="submit-btn" onclick="sendDataToGoogleSheets()">ОТПРАВИТЬ ДАННЫЕ</button>
     </div>
 
-    <h3>История сканирования:</h3>
-    <ul id="history-list"></ul>
+    <div class="history-container">
+        <h4 style="margin-top:0">История (текущий маршрут):</h4>
+        <ul id="history-list"></ul>
+    </div>
 
 <script>
-    let historyData = { "Маршрут 1": [], "Маршрут 2": [] };
+    // Объект для хранения данных всех 9 маршрутов
+    let historyData = {};
+    for(let i=1; i<=9; i++) { historyData[`Маршрут ${i}`] = []; }
+
     let lastScannedId = null;
     let html5QrcodeScanner;
 
-    // Звук только для успешного сканирования
     function playSuccessBeep() {
         try {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            if (ctx.state === 'suspended') ctx.resume(); 
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
-            
             osc.frequency.setValueAtTime(880, ctx.currentTime);
             gain.gain.value = 0.1;
-            
             osc.connect(gain);
             gain.connect(ctx.destination);
-            osc.start(ctx.currentTime); 
-            osc.stop(ctx.currentTime + 0.1);
-        } catch(e) { console.error("Audio error", e); }
+            osc.start(); osc.stop(ctx.currentTime + 0.1);
+        } catch(e) { console.error(e); }
     }
 
-    // Функция моргания экраном
     function triggerFlash(colorClass) {
         document.body.classList.add(colorClass);
-        setTimeout(() => { document.body.classList.remove(colorClass); }, 300);
+        setTimeout(() => document.body.classList.remove(colorClass), 300);
     }
 
-    // Отрисовка истории на экране
-    function updateHistoryUI() {
+    function updateUI() {
         const r = document.getElementById('route-select').value;
         const list = document.getElementById('history-list');
         list.innerHTML = '';
+        
         historyData[r].forEach(item => {
             let li = document.createElement('li');
-            li.textContent = `ID: ${item.id} | Время: ${item.time}`;
+            li.innerHTML = `<span>ID: <b>${item.id}</b></span> <span>${item.time}</span>`;
             list.appendChild(li);
         });
+        
+        document.getElementById('submit-btn').textContent = `ОТПРАВИТЬ ${r} (${historyData[r].length})`;
     }
 
-    document.getElementById('route-select').addEventListener('change', updateHistoryUI);
+    document.getElementById('route-select').addEventListener('change', updateUI);
 
     function onScanSuccess(decodedText) {
-        const parts = decodedText.split(':');
-        const id = (parts.length >= 3 ? parts[2] : decodedText).trim();
+        const id = decodedText.trim();
         const r = document.getElementById('route-select').value;
         const resultDisplay = document.getElementById('result');
 
+        // Проверка на дубликат именно в ЭТОМ маршруте
         const exists = historyData[r].some(item => item.id === id);
 
         if (exists) {
-            // ДУБЛИКАТ: Моргает красным, БЕЗ звука
             if (lastScannedId !== id) { 
                 triggerFlash('flash-red');
-                resultDisplay.innerHTML = `<span style="color:red">ДУБЛИКАТ: ${id}</span>`;
+                resultDisplay.innerHTML = `<span class="dup">ДУБЛИКАТ: ${id}</span>`;
                 if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
                 lastScannedId = id; 
             }
             return;
         }
 
-        // НОВЫЙ КОД: Моргает зеленым, издает звук
         lastScannedId = id;
         triggerFlash('flash-green');
         playSuccessBeep();
         
-        // Фиксируем время
         historyData[r].unshift({ id: id, time: new Date().toLocaleTimeString().slice(0, 5) });
-        updateHistoryUI();
+        updateUI();
         
-        resultDisplay.innerHTML = `ID: ${id} (Успешно)`;
+        resultDisplay.innerHTML = `ID: ${id}`;
         if (navigator.vibrate) navigator.vibrate(100);
     }
 
-    // Отправка в Google
     async function sendDataToGoogleSheets() {
         const r = document.getElementById('route-select').value;
-        const dataToSend = historyData[r];
+        const currentRouteData = historyData[r];
 
-        if (dataToSend.length === 0) return alert('Нет данных для отправки');
+        if (currentRouteData.length === 0) return alert('Нет данных для отправки по этому маршруту');
 
-        const btn = document.querySelector('.send-btn');
-        btn.textContent = 'Отправка...';
+        const btn = document.getElementById('submit-btn');
         btn.disabled = true;
+        btn.textContent = 'СОХРАНЯЮ...';
 
-        const payload = { route: r, data: dataToSend };
-        
-        // ВСТАВЬТЕ СЮДА ВАШУ ССЫЛКУ ИЗ GOOGLE APPS SCRIPT!
         const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwiDuT4Vk6l2tIv2kBMbeqbgcEyC_f-jicNTxLgdTbKed-qhha3sWdVHwaARj3uTljQ/exec'; 
 
         try {
             const response = await fetch(WEB_APP_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain' }, 
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ route: r, data: currentRouteData })
             });
 
             const result = await response.json();
             if (result.status === 'success') {
-                alert('Данные успешно отправлены в таблицу!');
-                historyData[r] = []; // Очищаем историю после отправки
-                updateHistoryUI();
-            } else {
-                alert('Ошибка: ' + result.message);
+                alert(`Успешно! Маршрут "${r}" записан.`);
+                // ОЧИЩАЕМ ТОЛЬКО ЭТОТ МАРШРУТ
+                historyData[r] = []; 
+                updateUI();
+                lastScannedId = null;
             }
         } catch (error) {
-            alert('Не удалось отправить данные. Проверьте интернет.');
+            alert('Ошибка связи с таблицей. Проверьте интернет.');
         } finally {
-            btn.textContent = 'Отправить в таблицу';
             btn.disabled = false;
+            updateUI();
         }
     }
 
-    // Запуск камеры
-    html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} }, false);
+    html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: 250 }, false);
     html5QrcodeScanner.render(onScanSuccess);
+    updateUI();
 </script>
 </body>
 </html>
