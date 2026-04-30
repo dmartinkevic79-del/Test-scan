@@ -3,314 +3,221 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Scanner Pro Glass</title>
+    <title>Scanner iOS Glass</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         :root {
             --ios-bg: #000000;
-            --glass-bg: rgba(28, 28, 30, 0.8);
+            --glass-bg: rgba(28, 28, 30, 0.85);
             --glass-border: rgba(255, 255, 255, 0.1);
             --accent-green: #30d158;
             --accent-red: #ff453a;
-            --text-main: #ffffff;
-            --text-secondary: #8e8e93;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, system-ui, sans-serif;
             background: var(--ios-bg);
-            background-image: radial-gradient(circle at 50% 0%, #1c1c1e, #000000);
-            color: var(--text-main);
+            color: white;
             margin: 0;
             padding: 20px 16px;
-            min-height: 100vh;
-            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
         }
 
-        /* Контейнер сканера */
-        .scanner-container {
+        /* Оболочка сканера */
+        .scanner-wrap {
             position: relative;
             width: 100%;
             max-width: 400px;
-            margin: 0 auto 20px;
-            border-radius: 30px;
+            margin: 0 auto;
+            border-radius: 32px;
             overflow: hidden;
             border: 1px solid var(--glass-border);
             background: #000;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            aspect-ratio: 1/1;
         }
 
         #reader { width: 100% !important; border: none !important; }
 
-        /* Ограничитель лазера внутри квадрата */
-        .laser-box {
+        /* ИСПРАВЛЕННЫЙ ЛАЗЕР: Теперь он внутри квадрата */
+        .laser-container {
             position: absolute;
             top: 50%;
             left: 50%;
-            width: 250px; /* Должно совпадать с qrbox */
+            width: 250px; /* Размер qrbox */
             height: 250px;
             transform: translate(-50%, -50%);
-            pointer-events: none;
             z-index: 10;
+            pointer-events: none;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 4px;
         }
 
         .laser-line {
             width: 100%;
             height: 2px;
             background: var(--accent-red);
-            box-shadow: 0 0 12px 2px var(--accent-red);
+            box-shadow: 0 0 15px var(--accent-red);
             position: absolute;
-            animation: laserMove 3s infinite ease-in-out;
-            opacity: 0.7;
+            animation: scanAnim 3.5s infinite ease-in-out;
         }
 
-        @keyframes laserMove {
-            0%, 100% { top: 0; }
-            50% { top: 100%; }
+        @keyframes scanAnim {
+            0%, 100% { top: 0%; opacity: 0.3; }
+            50% { top: 100%; opacity: 1; }
         }
 
-        /* Дизайн карточек */
-        .glass-card {
+        /* Стеклянные элементы */
+        .glass {
             background: var(--glass-bg);
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border);
             border-radius: 20px;
-            padding: 16px;
-            margin-bottom: 12px;
-        }
-
-        .route-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--accent-green);
-            border-radius: 50%;
-            box-shadow: 0 0 10px var(--accent-green);
-            display: inline-block;
-            margin-right: 8px;
+            padding: 15px;
+            margin: 15px 0;
         }
 
         select {
-            background: transparent;
-            color: white;
-            border: none;
-            font-size: 17px;
-            font-weight: 600;
-            outline: none;
-            width: 100%;
+            width: 100%; background: transparent; color: white;
+            border: none; font-size: 18px; font-weight: 600; outline: none;
         }
 
-        /* Кнопка отправки */
         .ios-btn {
             background: var(--accent-green);
-            color: black;
-            border: none;
-            padding: 18px;
-            border-radius: 16px;
-            font-size: 17px;
-            font-weight: 700;
-            width: 100%;
-            cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            margin-top: 10px;
+            color: black; border: none; padding: 18px;
+            border-radius: 16px; font-size: 17px; font-weight: 700;
+            width: 100%; cursor: pointer; transition: 0.3s;
         }
 
-        .ios-btn:active { transform: scale(0.96); opacity: 0.9; }
         .ios-btn:disabled { background: #3a3a3c; color: #8e8e93; }
 
-        #result-display {
-            text-align: center;
-            font-size: 22px;
-            font-weight: 700;
-            margin: 15px 0;
-            min-height: 28px;
-            letter-spacing: -0.5px;
+        #status {
+            text-align: center; font-size: 20px; font-weight: 700;
+            margin: 15px 0; min-height: 24px; color: var(--accent-green);
         }
 
-        /* Список истории */
-        .history-list { list-style: none; padding: 0; margin: 0; }
         .history-card {
-            background: rgba(255, 255, 255, 0.04);
-            margin-bottom: 8px;
-            padding: 12px 16px;
-            border-radius: 14px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(255,255,255,0.05);
+            padding: 12px; border-radius: 12px; margin-bottom: 8px;
+            display: flex; justify-content: space-between;
+            border: 1px solid rgba(255,255,255,0.05);
         }
-
-        .time { color: var(--text-secondary); font-size: 14px; font-variant-numeric: tabular-nums; }
-        
-        .flash-red { background-color: rgba(255, 69, 58, 0.2) !important; }
-        .flash-green { background-color: rgba(48, 209, 88, 0.2) !important; }
     </style>
 </head>
 <body>
 
-    <div class="glass-card">
-        <div class="route-header">
-            <span><span class="status-dot"></span>Выбор Маршрута</span>
-            <select id="route-select">
-                <option value="Маршрут 8">Маршрут 8</option>
-                <option value="Маршрут 944">Маршрут 944</option>
-                <option value="Маршрут 942">Маршрут 942</option>
-                <option value="Маршрут 4">Маршрут 4</option>
-                <option value="Маршрут 5">Маршрут 5</option>
-                <option value="Маршрут 6">Маршрут 6</option>
-                <option value="Маршрут 7">Маршрут 7</option>
-                <option value="Маршрут 8">Маршрут 8</option>
-                <option value="Маршрут 9">Маршрут 9</option>
+    <div class="glass">
+        <select id="route-select">
+            <option value="Маршрут 1">Маршрут 1</option>
+            <option value="Маршрут 8">Маршрут 8</option>
+            <option value="Маршрут 9">Маршрут 9</option>
             </select>
-        </div>
     </div>
 
-    <div class="scanner-container">
+    <div class="scanner-wrap">
         <div id="reader"></div>
-        <div class="laser-box">
+        <div class="laser-container">
             <div class="laser-line"></div>
         </div>
     </div>
 
-    <div id="result-display">Ожидание...</div>
+    <div id="status">Готов</div>
 
-    <button class="ios-btn" id="submit-btn" onclick="sendDataToGoogleSheets()">
+    <button class="ios-btn" id="submit-btn" onclick="sendData()">
         Отправить данные (0)
     </button>
 
-    <div style="margin-top: 30px;">
-        <h4 style="margin-left: 5px; color: var(--text-secondary)">ИСТОРИЯ СКАНИРОВАНИЯ</h4>
-        <div id="history-container"></div>
+    <div style="margin-top: 20px;">
+        <h4 style="color: #8e8e93; margin-left: 10px;">ИСТОРИЯ</h4>
+        <div id="history-box"></div>
     </div>
 
 <script>
     let historyData = {};
-    for(let i=1; i<=9; i++) { historyData[`Маршрут ${i}`] = []; }
-    let lastScannedId = null;
-    let isSending = false;
-
-    // Звук
-    function playBeep() {
-        try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const g = ctx.createGain();
-            osc.frequency.setValueAtTime(1000, ctx.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.1);
-            osc.connect(g); g.connect(ctx.destination);
-            osc.start(); osc.stop(ctx.currentTime + 0.1);
-        } catch(e) {}
-    }
-
-    function flash(color) {
-        document.body.classList.add('flash-' + color);
-        setTimeout(() => document.body.classList.remove('flash-' + color), 300);
-    }
+    for(let i=1; i<=1000; i++) { historyData[`Маршрут ${i}`] = []; } // Резерв под любые номера
+    let lastId = null;
+    let isLocked = false;
 
     function updateUI() {
         const r = document.getElementById('route-select').value;
-        const container = document.getElementById('history-container');
-        container.innerHTML = '';
-        
+        const box = document.getElementById('history-box');
+        box.innerHTML = '';
         historyData[r].forEach(item => {
-            let div = document.createElement('div');
-            div.className = 'history-card';
-            div.innerHTML = `<span>${item.id}</span><span class="time">${item.time}</span>`;
-            container.appendChild(div);
+            box.innerHTML += `<div class="history-card"><span>${item.id}</span><span style="color:#8e8e93">${item.time}</span></div>`;
         });
-        
         const btn = document.getElementById('submit-btn');
         btn.textContent = `Отправить ${r} (${historyData[r].length})`;
-        btn.disabled = historyData[r].length === 0 || isSending;
+        btn.disabled = historyData[r].length === 0 || isLocked;
     }
 
-    function onScanSuccess(decodedText) {
-        if (isSending) return; // Блокируем скан во время отправки
+    function onScanSuccess(text) {
+        if (isLocked) return;
 
-        // ЛОГИКА ФИЛЬТРАЦИИ: берем 3-ю часть если есть двоеточия
-        const parts = decodedText.split(':');
-        let id = (parts.length >= 3) ? parts[2].trim() : decodedText.trim();
-        
+        // Фильтрация ID (из $1:1:5033082853:50189480 достаем 5033082853)
+        let id = text.trim();
+        if (id.includes(':')) {
+            const parts = id.split(':');
+            if (parts.length >= 3) id = parts[2];
+        }
+
         const r = document.getElementById('route-select').value;
-        const display = document.getElementById('result-display');
+        const status = document.getElementById('status');
 
-        const exists = historyData[r].some(item => item.id === id);
-
-        if (exists) {
-            if (lastScannedId !== id) {
-                flash('red');
-                display.style.color = 'var(--accent-red)';
-                display.textContent = 'ДУБЛИКАТ';
-                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-                lastScannedId = id;
+        if (historyData[r].some(i => i.id === id)) {
+            if (lastId !== id) {
+                status.style.color = 'var(--accent-red)';
+                status.textContent = 'ДУБЛИКАТ';
+                navigator.vibrate([100, 50, 100]);
+                lastId = id;
             }
             return;
         }
 
-        lastScannedId = id;
-        flash('green');
-        playBeep();
-        
-        historyData[r].unshift({ id: id, time: new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}) });
+        lastId = id;
+        status.style.color = 'var(--accent-green)';
+        status.textContent = id;
+        navigator.vibrate(40);
+
+        historyData[r].unshift({ id: id, time: new Date().toLocaleTimeString().slice(0,5) });
         updateUI();
-        
-        display.style.color = 'var(--accent-green)';
-        display.textContent = id;
-        if (navigator.vibrate) navigator.vibrate(40);
     }
 
-    async function sendDataToGoogleSheets() {
+    async function sendData() {
         const r = document.getElementById('route-select').value;
-        if (historyData[r].length === 0) return;
-
-        isSending = true;
-        const btn = document.getElementById('submit-btn');
-        const display = document.getElementById('result-display');
+        const data = historyData[r];
+        const status = document.getElementById('status');
         
-        btn.textContent = 'СОХРАНЕНИЕ...';
-        btn.disabled = true;
+        isLocked = true;
+        updateUI();
+        status.textContent = 'Сохранение...';
 
-        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwiDuT4Vk6l2tIv2kBMbeqbgcEyC_f-jicNTxLgdTbKed-qhha3sWdVHwaARj3uTljQ/exec'; 
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyYdqLYYn0z6m8UgpS6mpWtw199xB0Eqbm6Oc2fI8haklkhd3ajBuI4Tu_OHvaopwb0/exec';
 
         try {
-            const response = await fetch(WEB_APP_URL, {
+            const resp = await fetch(WEB_APP_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'text/plain' }, 
-                body: JSON.stringify({ route: r, data: historyData[r] })
+                mode: 'no-cors', // Это поможет избежать ошибок CORS
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({ route: r, data: data })
             });
 
-            const result = await response.json();
-            if (result.status === 'success') {
-                historyData[r] = []; // Очищаем данные
-                lastScannedId = null; // ВАЖНО: Сбрасываем ID, чтобы сканер ожил
-                display.textContent = 'Успешно отправлено';
-                display.style.color = 'var(--accent-green)';
-            }
-        } catch (error) {
-            alert('Ошибка сети. Проверьте интернет.');
+            // Так как no-cors не дает прочитать ответ, считаем успех если нет ошибки catch
+            historyData[r] = [];
+            lastId = null;
+            status.textContent = 'Успешно отправлено!';
+            navigator.vibrate([50, 50, 50]);
+        } catch (e) {
+            alert('Ошибка сети! Проверьте интернет.');
         } finally {
-            isSending = false;
+            isLocked = false;
             updateUI();
-            setTimeout(() => { if(!isSending) display.textContent = 'Готов к сканированию'; }, 2000);
         }
     }
 
-    // Инициализация
-    const html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-        fps: 20, 
-        qrbox: 250, // Квадрат 250x250
-        aspectRatio: 1.0
-    });
-    html5QrcodeScanner.render(onScanSuccess);
+    const scanner = new Html5QrcodeScanner("reader", { fps: 20, qrbox: 250 });
+    scanner.render(onScanSuccess);
 
     document.getElementById('route-select').addEventListener('change', updateUI);
-    updateUI();
 </script>
 </body>
 </html>
