@@ -3,60 +3,178 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Складской Сканер v2</title>
+    <title>Scanner Pro Glass</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: -apple-system, sans-serif; padding: 10px; margin: 0; transition: background-color 0.2s; background-color: #f4f7f6; }
-        #reader { width: 100%; max-width: 500px; margin: 0 auto 15px auto; border-radius: 12px; overflow: hidden; border: 2px solid #ccc; }
-        .controls { text-align: center; margin-bottom: 10px; }
-        select, button { padding: 15px; font-size: 16px; margin: 5px; width: 95%; max-width: 400px; border-radius: 10px; border: 1px solid #ddd; }
-        select { background: white; font-weight: bold; }
-        button.send-btn { background-color: #28a745; color: white; border: none; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        button.send-btn:disabled { background-color: #ccc; }
-        #result { font-size: 18px; font-weight: bold; text-align: center; margin: 10px 0; height: 30px; color: #333; }
-        .history-container { background: white; border-radius: 12px; padding: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        ul { list-style-type: none; padding: 0; margin: 0; }
-        li { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; display: flex; justify-content: space-between; }
-        .flash-green { background-color: #c3e6cb !important; }
-        .flash-red { background-color: #f5c6cb !important; }
-        .dup { color: #721c24; background: #f8d7da; padding: 2px 5px; border-radius: 4px; }
+        :root {
+            --ios-bg: #000000;
+            --glass-bg: rgba(28, 28, 30, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-green: #30d158;
+            --accent-red: #ff453a;
+            --text-main: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--ios-bg);
+            background-image: radial-gradient(circle at top right, #1c1c1e, #000000);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px 15px;
+            min-height: 100vh;
+            transition: background-color 0.3s;
+        }
+
+        /* Эффект вспышки */
+        .flash-green { background-color: rgba(48, 209, 88, 0.2) !important; }
+        .flash-red { background-color: rgba(255, 69, 58, 0.2) !important; }
+
+        h3, h4 { font-weight: 600; letter-spacing: -0.5px; margin-bottom: 10px; }
+
+        /* Контейнер камеры */
+        #reader {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto 20px auto;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: #000;
+        }
+
+        /* Стеклянные элементы управления */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 18px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        select {
+            width: 100%;
+            background: transparent;
+            color: white;
+            border: none;
+            font-size: 17px;
+            appearance: none;
+            outline: none;
+            text-align: center;
+        }
+
+        /* Кнопка в стиле iOS */
+        .ios-btn {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            font-size: 17px;
+            font-weight: 600;
+            border-radius: 14px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: var(--accent-green);
+            color: #000;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.97);
+            filter: brightness(0.8);
+        }
+
+        .btn-primary:disabled {
+            background: #3a3a3c;
+            color: #8e8e93;
+        }
+
+        #result {
+            text-align: center;
+            font-size: 19px;
+            font-weight: 500;
+            margin: 15px 0;
+            height: 24px;
+            color: var(--accent-green);
+        }
+
+        .history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 15px;
+        }
+
+        .history-item:last-child { border: none; }
+        .time-label { color: #8e8e93; font-variant-numeric: tabular-nums; }
+        .dup-text { color: var(--accent-red); }
+
+        /* Кастомная стрелочка для селекта */
+        .select-wrapper { position: relative; }
+        .select-wrapper::after {
+            content: "▼";
+            font-size: 10px;
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            opacity: 0.5;
+        }
     </style>
 </head>
 <body>
 
-    <div class="controls">
-        <select id="route-select">
-            <option value="Маршрут 1">Маршрут 1</option>
-            <option value="Маршрут 2">Маршрут 2</option>
-            <option value="Маршрут 3">Маршрут 3</option>
-            <option value="Маршрут 4">Маршрут 4</option>
-            <option value="Маршрут 5">Маршрут 5</option>
-            <option value="Маршрут 6">Маршрут 6</option>
-            <option value="Маршрут 7">Маршрут 7</option>
-            <option value="Маршрут 8">Маршрут 8</option>
-            <option value="Маршрут 9">Маршрут 9</option>
-        </select>
+    <div class="glass-card">
+        <div class="select-wrapper">
+            <select id="route-select">
+                <option value="Маршрут 8">Маршрут 1</option>
+                <option value="Маршрут 943">Маршрут 2</option>
+                <option value="Маршрут 942">Маршрут 3</option>
+                <option value="Маршрут 18">Маршрут 4</option>
+                <option value="Маршрут 919">Маршрут 5</option>
+                <option value="Маршрут 6">Маршрут 6</option>
+                <option value="Маршрут 7">Маршрут 7</option>
+                <option value="Маршрут 8">Маршрут 8</option>
+                <option value="Маршрут 9">Маршрут 9</option>
+            </select>
+        </div>
     </div>
 
     <div id="reader"></div>
-    <div id="result">Готов к работе</div>
+    
+    <div id="result">Готов к сканированию</div>
 
-    <div class="controls">
-        <button class="send-btn" id="submit-btn" onclick="sendDataToGoogleSheets()">ОТПРАВИТЬ ДАННЫЕ</button>
-    </div>
+    <button class="ios-btn btn-primary" id="submit-btn" onclick="sendDataToGoogleSheets()">
+        Отправить данные
+    </button>
 
-    <div class="history-container">
-        <h4 style="margin-top:0">История (текущий маршрут):</h4>
-        <ul id="history-list"></ul>
+    <div style="margin-top: 25px;">
+        <h4 id="history-title">История</h4>
+        <div class="glass-card">
+            <ul id="history-list" class="history-list">
+                </ul>
+        </div>
     </div>
 
 <script>
-    // Объект для хранения данных всех 9 маршрутов
     let historyData = {};
     for(let i=1; i<=9; i++) { historyData[`Маршрут ${i}`] = []; }
-
     let lastScannedId = null;
-    let html5QrcodeScanner;
 
     function playSuccessBeep() {
         try {
@@ -64,11 +182,10 @@
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.frequency.setValueAtTime(880, ctx.currentTime);
-            gain.gain.value = 0.1;
-            osc.connect(gain);
-            gain.connect(ctx.destination);
+            gain.gain.value = 0.05;
+            osc.connect(gain); gain.connect(ctx.destination);
             osc.start(); osc.stop(ctx.currentTime + 0.1);
-        } catch(e) { console.error(e); }
+        } catch(e) {}
     }
 
     function triggerFlash(colorClass) {
@@ -83,11 +200,13 @@
         
         historyData[r].forEach(item => {
             let li = document.createElement('li');
-            li.innerHTML = `<span>ID: <b>${item.id}</b></span> <span>${item.time}</span>`;
+            li.className = 'history-item';
+            li.innerHTML = `<span>${item.id}</span> <span class="time-label">${item.time}</span>`;
             list.appendChild(li);
         });
         
-        document.getElementById('submit-btn').textContent = `ОТПРАВИТЬ ${r} (${historyData[r].length})`;
+        const btn = document.getElementById('submit-btn');
+        btn.textContent = `Отправить ${r} (${historyData[r].length})`;
     }
 
     document.getElementById('route-select').addEventListener('change', updateUI);
@@ -97,14 +216,13 @@
         const r = document.getElementById('route-select').value;
         const resultDisplay = document.getElementById('result');
 
-        // Проверка на дубликат именно в ЭТОМ маршруте
         const exists = historyData[r].some(item => item.id === id);
 
         if (exists) {
             if (lastScannedId !== id) { 
                 triggerFlash('flash-red');
-                resultDisplay.innerHTML = `<span class="dup">ДУБЛИКАТ: ${id}</span>`;
-                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                resultDisplay.innerHTML = `<span class="dup-text">ДУБЛИКАТ</span>`;
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
                 lastScannedId = id; 
             }
             return;
@@ -117,20 +235,21 @@
         historyData[r].unshift({ id: id, time: new Date().toLocaleTimeString().slice(0, 5) });
         updateUI();
         
-        resultDisplay.innerHTML = `ID: ${id}`;
-        if (navigator.vibrate) navigator.vibrate(100);
+        resultDisplay.innerHTML = id;
+        if (navigator.vibrate) navigator.vibrate(40);
     }
 
     async function sendDataToGoogleSheets() {
         const r = document.getElementById('route-select').value;
         const currentRouteData = historyData[r];
 
-        if (currentRouteData.length === 0) return alert('Нет данных для отправки по этому маршруту');
+        if (currentRouteData.length === 0) return;
 
         const btn = document.getElementById('submit-btn');
         btn.disabled = true;
-        btn.textContent = 'СОХРАНЯЮ...';
+        btn.textContent = 'Сохранение...';
 
+        // ВАЖНО: Вставьте ваш URL
         const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwiDuT4Vk6l2tIv2kBMbeqbgcEyC_f-jicNTxLgdTbKed-qhha3sWdVHwaARj3uTljQ/exec'; 
 
         try {
@@ -142,21 +261,25 @@
 
             const result = await response.json();
             if (result.status === 'success') {
-                alert(`Успешно! Маршрут "${r}" записан.`);
-                // ОЧИЩАЕМ ТОЛЬКО ЭТОТ МАРШРУТ
                 historyData[r] = []; 
                 updateUI();
                 lastScannedId = null;
+                document.getElementById('result').textContent = 'Успешно отправлено';
             }
         } catch (error) {
-            alert('Ошибка связи с таблицей. Проверьте интернет.');
+            alert('Ошибка сети');
         } finally {
             btn.disabled = false;
             updateUI();
         }
     }
 
-    html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: 250 }, false);
+    // Инициализация сканера с более современным видом
+    const html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+        fps: 20, 
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0
+    });
     html5QrcodeScanner.render(onScanSuccess);
     updateUI();
 </script>
