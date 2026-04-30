@@ -6,146 +6,112 @@
     <title>SOFRINOKBT Scanner</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        :root { --primary: #00ffcc; --error: #ff6b6b; --bg: #0f0f1a; }
-        body { margin: 0; background: var(--bg); color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        :root { --accent: #00ffcc; --err: #ff6b6b; --bg: #0f0f1a; }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         
-        #reader-wrapper { position: relative; width: 320px; height: 320px; margin-top: 20px; border-radius: 20px; overflow: hidden; border: 2px solid rgba(255,255,255,0.1); }
-        #reader { width: 100% !important; }
-        #start-btn { position: absolute; z-index: 10; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 15px 25px; background: var(--primary); border: none; border-radius: 30px; font-weight: bold; cursor: pointer; }
+        #reader-container { position: relative; width: 320px; height: 320px; margin-top: 30px; border-radius: 24px; overflow: hidden; box-shadow: 0 0 20px rgba(0, 255, 204, 0.2); }
+        #reader { width: 100% !important; border: none !important; }
+        #scan-frame { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 280px; border: 2px solid var(--accent); z-index: 5; pointer-events: none; box-shadow: 0 0 0 1000px rgba(0,0,0,0.5); }
         
-        #custom-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 280px; border: 2px solid var(--primary); z-index: 5; pointer-events: none; box-shadow: 0 0 0 500px rgba(0,0,0,0.5); }
+        .ui-panel { width: 90%; max-width: 360px; margin-top: 20px; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 20px; backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); }
+        .status { padding: 15px; background: rgba(0,0,0,0.4); border-radius: 12px; text-align: center; font-size: 1.1rem; color: var(--accent); margin-bottom: 15px; border-left: 4px solid var(--accent); }
         
-        .controls { width: 90%; max-width: 360px; margin-top: 20px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 15px; backdrop-filter: blur(10px); }
-        .result-display { padding: 15px; background: #000; border-radius: 10px; text-align: center; font-size: 1.2rem; font-weight: bold; color: var(--primary); margin-bottom: 10px; }
-        .duplicate { color: var(--error); animation: shake 0.3s; }
-        @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
+        select, .btn { width: 100%; padding: 14px; margin-top: 10px; border-radius: 12px; border: none; font-size: 1rem; font-weight: bold; transition: 0.3s; }
+        select { background: rgba(255,255,255,0.1); color: white; }
+        .btn { background: var(--accent); color: #000; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
+        .btn:active { transform: scale(0.98); opacity: 0.8; }
         
-        select, .send-btn { width: 100%; padding: 12px; margin-top: 10px; border-radius: 10px; border: none; font-size: 1rem; font-weight: bold; }
-        .send-btn { background: var(--primary); cursor: pointer; }
+        .history { width: 90%; max-width: 360px; margin-top: 15px; }
+        .item { background: rgba(255,255,255,0.07); margin-bottom: 8px; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .item .del { color: var(--err); font-size: 1.2rem; padding: 0 5px; cursor: pointer; }
         
-        .history-item { background: rgba(255,255,255,0.1); margin-top: 10px; padding: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .del-btn { color: var(--error); padding: 5px 10px; cursor: pointer; }
-        .copyright { margin: 20px; font-size: 0.7rem; opacity: 0.6; font-weight: bold; }
+        .footer { margin: 30px 0; font-size: 0.75rem; opacity: 0.7; letter-spacing: 1.5px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div id="reader-wrapper">
-    <button id="start-btn" onclick="startScanner()">ЗАПУСТИТЬ СКАНЕР</button>
+<div id="reader-container">
     <div id="reader"></div>
-    <div id="custom-overlay"></div>
+    <div id="scan-frame"></div>
 </div>
 
-<div class="controls">
-    <div id="result" class="result-display">ГОТОВ К РАБОТЕ</div>
-    <select id="route-select" onchange="updateUI()">
-        <option value="1">Маршрут №1</option><option value="2">Маршрут №2</option><option value="3">Маршрут №3</option>
-        <option value="4">Маршрут №4</option><option value="5">Маршрут №5</option><option value="6">Маршрут №6</option>
+<div class="ui-panel">
+    <div id="result" class="status">ОЖИДАНИЕ...</div>
+    <select id="route">
+        <option value="1">МАРШРУТ №1</option><option value="2">МАРШРУТ №2</option>
+        <option value="3">МАРШРУТ №3</option><option value="4">МАРШРУТ №4</option>
     </select>
-    <button id="send-btn" class="send-btn" onclick="sendToGoogle()">ОТПРАВИТЬ В ТАБЛИЦУ</button>
+    <button id="send" class="btn" onclick="sendData()">ОТПРАВИТЬ В ТАБЛИЦУ</button>
 </div>
 
-<div id="history-list" style="width: 90%; max-width: 360px;"></div>
+<div id="history" class="history"></div>
 
-<div class="copyright">DEVELOPED BY D. MARTINKEVICH FOR SOFRINOKBT</div>
+<div class="footer">DEVELOPED BY D. MARTINKEVICH FOR SOFRINOKBT</div>
 
 <script>
-    // СЮДА ВСТАВЬТЕ ССЫЛКУ ИЗ GOOGLE (DEPLOY)
-    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwLqHc5fVq6KXTV-skVYhZmTigQ49lLCGGDmzgAfA5dHehOKWsX-KJp-sfPktm7QTdP7A/exec';
+    // ВСТАВЬТЕ СЮДА ССЫЛКУ ИЗ ОКНА "НОВОЕ РАЗВЕРТЫВАНИЕ"
+    const API_URL = 'https://script.google.com/macros/s/AKfycbysOLS6KdBf4soTVNhWEcbfVHEIYsxnsUGn89On5SRsAz3oi8oQLEUetddFjtuW8zbcIA/exec';
 
-    let historyData = JSON.parse(localStorage.getItem('sofrinoData')) || {1:[],2:[],3:[],4:[],5:[],6:[]};
-    let lastId = null;
-    const html5QrCode = new Html5Qrcode("reader");
+    let db = JSON.parse(localStorage.getItem('scans')) || {1:[],2:[],3:[],4:[]};
+    const scanner = new Html5Qrcode("reader");
 
-    async function startScanner() {
-        document.getElementById('start-btn').style.display = 'none';
-        const config = { fps: 20, qrbox: { width: 280, height: 280 } };
-        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
-        if ('wakeLock' in navigator) await navigator.wakeLock.request('screen');
-    }
+    scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 280 }, (text) => {
+        const id = text.includes(':') ? text.split(':')[2].trim() : text.trim();
+        const route = document.getElementById('route').value;
+        const res = document.getElementById('result');
 
-    function onScanSuccess(decodedText) {
-        const parts = decodedText.split(':');
-        const id = (parts.length >= 3 ? parts[2] : decodedText).trim();
-        const route = document.getElementById('route-select').value;
-        const resDiv = document.getElementById('result');
-
-        if (historyData[route].some(item => item.id === id)) {
-            if (lastId !== id) {
-                resDiv.innerText = "ДУБЛИКАТ: " + id;
-                resDiv.classList.add('duplicate');
-                playBeep(false);
-                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-                lastId = id;
-            }
+        if (db[route].some(i => i.id === id)) {
+            res.style.color = 'var(--err)';
+            res.innerText = "ДУБЛИКАТ: " + id;
             return;
         }
 
-        lastId = id;
-        resDiv.innerText = id;
-        resDiv.classList.remove('duplicate');
-        playBeep(true);
-        if (navigator.vibrate) navigator.vibrate(100);
-
-        historyData[route].unshift({ id: id, time: new Date().toLocaleTimeString().slice(0,5) });
+        res.style.color = 'var(--accent)';
+        res.innerText = id;
+        db[route].unshift({ id, time: new Date().toLocaleTimeString().slice(0,5) });
         save();
-    }
+    });
 
     function save() {
-        localStorage.setItem('sofrinoData', JSON.stringify(historyData));
-        updateUI();
+        localStorage.setItem('scans', JSON.stringify(db));
+        render();
     }
 
-    function updateUI() {
-        const route = document.getElementById('route-select').value;
-        const list = document.getElementById('history-list');
-        list.innerHTML = historyData[route].map((item, idx) => `
-            <div class="history-item">
-                <span>${item.id} <small>(${item.time})</small></span>
-                <span class="del-btn" onclick="deleteItem(${idx})">❌</span>
+    function render() {
+        const r = document.getElementById('route').value;
+        document.getElementById('history').innerHTML = db[r].map((item, idx) => `
+            <div class="item">
+                <span><b>${item.id}</b> <small>(${item.time})</small></span>
+                <span class="del" onclick="remove(${idx})">✕</span>
             </div>
         `).join('');
     }
 
-    function deleteItem(idx) {
-        const route = document.getElementById('route-select').value;
-        historyData[route].splice(idx, 1);
+    function remove(idx) {
+        db[document.getElementById('route').value].splice(idx, 1);
         save();
     }
 
-    function playBeep(success) {
-        const ctx = new AudioContext();
-        const osc = ctx.createOscillator();
-        const g = ctx.createGain();
-        osc.frequency.value = success ? 800 : 200;
-        g.gain.value = 0.1;
-        osc.connect(g); g.connect(ctx.destination);
-        osc.start(); osc.stop(ctx.currentTime + (success ? 0.1 : 0.3));
-    }
+    async function sendData() {
+        const r = document.getElementById('route').value;
+        const codes = db[r].map(i => i.id).join(', ');
+        if (!codes) return alert("Список пуст!");
 
-    function sendToGoogle() {
-        const route = document.getElementById('route-select').value;
-        const codes = historyData[route].map(i => i.id).join(', ');
-        if (!codes) return alert("Список пуст");
-
-        const btn = document.getElementById('send-btn');
+        const btn = document.getElementById('send');
         btn.innerText = "ОТПРАВКА..."; btn.disabled = true;
 
-        fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            body: JSON.stringify({ value: codes, route: route })
-        }).then(() => {
-            alert("Данные за " + route + " маршрут отправлены!");
-            btn.innerText = "ОТПРАВИТЬ В ТАБЛИЦУ"; btn.disabled = false;
-        }).catch(() => {
+        try {
+            await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ value: codes, route: r }) });
+            alert("Данные за Маршрут №" + r + " успешно отправлены!");
+        } catch(e) {
             alert("Ошибка сети");
+        } finally {
             btn.innerText = "ОТПРАВИТЬ В ТАБЛИЦУ"; btn.disabled = false;
-        });
+        }
     }
 
-    updateUI();
+    document.getElementById('route').onchange = render;
+    render();
 </script>
 </body>
 </html>
-
