@@ -13,238 +13,274 @@
         }
 
         body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Roboto, sans-serif;
+            margin: 0; padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: radial-gradient(circle at center, #1a1a2e 0%, #0f0f1a 100%);
             color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            display: flex; flex-direction: column; align-items: center;
             min-height: 100vh;
         }
 
-        /* Контейнер камеры */
+        /* Зеленая вспышка подтверждения */
+        #flash-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 255, 128, 0.4);
+            z-index: 1000; opacity: 0; pointer-events: none;
+            transition: opacity 0.1s ease-out;
+        }
+
         #reader-wrapper {
-            position: relative;
-            width: 320px;
-            height: 320px;
-            margin-top: 20px;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
-            background: #000;
+            position: relative; width: 320px; height: 320px;
+            margin-top: 20px; border-radius: 20px; overflow: hidden;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.7); background: #000;
         }
 
-        #reader {
-            width: 100% !important;
-            height: 100% !important;
-            border: none !important;
-        }
+        #reader { width: 100% !important; height: 100% !important; border: none !important; }
 
-        /* Рамка 280x280 */
+        /* Строго 280x280 для прицела */
         #custom-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 280px;
-            height: 280px;
-            border: 2px solid var(--primary-color);
-            pointer-events: none;
-            z-index: 10;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 280px; height: 280px; border: 2px solid var(--primary-color);
+            z-index: 10; box-shadow: 0 0 0 500px rgba(0, 0, 0, 0.6);
             box-sizing: border-box;
-            box-shadow: 0 0 0 500px rgba(0, 0, 0, 0.5); /* Затемнение вокруг */
         }
 
-        /* Лазерная линия */
+        /* Лазер строго внутри рамки */
         #laser {
-            position: absolute;
-            width: 100%;
-            height: 2px;
-            background-color: var(--primary-color);
-            box-shadow: 0 0 15px var(--primary-color);
-            top: 0;
-            left: 0;
+            position: absolute; width: 100%; height: 2px;
+            background: var(--primary-color); box-shadow: 0 0 15px var(--primary-color);
             animation: scanLine 2s infinite linear;
         }
 
-        @keyframes scanLine {
-            0% { top: 0; }
-            50% { top: 100%; }
-            100% { top: 0; }
+        @keyframes scanLine { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
+
+        .controls {
+            width: 90%; max-width: 350px; margin-top: 15px; padding: 15px;
+            background: var(--glass-bg); backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border); border-radius: 20px;
         }
 
-        /* Панель управления */
-        .controls {
-            width: 90%;
-            max-width: 350px;
-            margin-top: 25px;
-            padding: 20px;
-            background: var(--glass-bg);
-            backdrop-filter: blur(15px);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            text-align: center;
+        .stat-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 10px; font-weight: bold; color: var(--primary-color);
+        }
+
+        /* Кнопка сброса счетчика */
+        .reset-btn {
+            background: transparent; border: 1px solid rgba(255,100,100,0.5);
+            color: #ff6b6b; padding: 4px 8px; border-radius: 6px;
+            font-size: 0.7rem; cursor: pointer;
         }
 
         .result-display {
-            font-size: 1.1rem;
-            margin-bottom: 15px;
-            padding: 12px;
-            background: rgba(0, 0, 0, 0.4);
-            border-radius: 12px;
-            min-height: 20px;
-            color: var(--primary-color);
-            font-weight: bold;
+            padding: 12px; background: rgba(0, 0, 0, 0.5);
+            border-radius: 12px; margin-bottom: 10px; text-align: center;
+            font-size: 1.1rem; font-weight: bold; letter-spacing: 1px;
         }
 
         .glass-select, .glass-button {
-            width: 100%;
-            padding: 14px;
-            margin: 10px 0;
-            border-radius: 12px;
-            border: 1px solid var(--glass-border);
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-weight: bold;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: 0.3s;
+            width: 100%; padding: 12px; margin: 5px 0; border-radius: 10px;
+            border: 1px solid var(--glass-border); background: rgba(255,255,255,0.1);
+            color: white; font-weight: bold; cursor: pointer;
         }
 
         .glass-button {
             background: linear-gradient(135deg, rgba(0, 255, 204, 0.4), rgba(0, 153, 255, 0.4));
-            border: none;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            border: none; text-transform: uppercase;
         }
 
-        .glass-button:hover:not(:disabled) {
-            background: rgba(0, 255, 204, 0.6);
-            transform: translateY(-2px);
+        /* Список истории */
+        .history-panel {
+            width: 90%; max-width: 350px; margin-top: 15px;
+            font-size: 0.85rem; color: #ddd;
         }
 
-        .glass-button:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
+        .history-item {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 8px 12px; border-radius: 8px; margin-bottom: 5px;
+            display: flex; justify-content: space-between;
+            border-left: 3px solid var(--primary-color);
         }
 
-        .glass-select option {
-            background: #1a1a2e;
-        }
-
-        .copyright {
-            margin-top: auto;
-            padding: 20px;
-            font-size: 0.8rem;
-            color: rgba(255, 255, 255, 0.8);
-            letter-spacing: 1px;
-            font-weight: 600;
+        /* Читабельный копирайт */
+        .copyright { 
+            padding: 20px; font-size: 0.85rem; 
+            color: rgba(255, 255, 255, 1); /* Непрозрачный белый */
+            font-weight: 700; letter-spacing: 1px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <div id="reader-wrapper">
-        <div id="reader"></div>
-        <div id="custom-overlay">
-            <div id="laser"></div>
-        </div>
+<div id="flash-overlay"></div>
+
+<div id="reader-wrapper">
+    <div id="reader"></div>
+    <div id="custom-overlay"><div id="laser"></div></div>
+</div>
+
+<div class="controls">
+    <div class="stat-bar">
+        <span>МАРШРУТ:</span>
+        <span id="route-counter">СКАНИРОВАНО: 0</span>
+        <button class="reset-btn" onclick="resetCurrentRoute()">СБРОСИТЬ</button>
     </div>
 
-    <div class="controls">
-        <div id="result" class="result-display">ОЖИДАНИЕ КОДА...</div>
-        
-        <select id="route-select" class="glass-select">
-            <option value="1">МАРШРУТ №8</option>
-            <option value="2">МАРШРУТ №948</option>
-            <option value="3">МАРШРУТ №942</option>
-            <option value="4">МАРШРУТ №944</option>
-            <option value="5">МАРШРУТ №18</option>
-            <option value="6">МАРШРУТ №946</option>
-            <option value="7">МАРШРУТ №943</option>
-            <option value="8">МАРШРУТ №919</option>
-            <option value="9">МАРШРУТ №945</option>
-        </select>
+    <div id="result" class="result-display">ОЖИДАНИЕ...</div>
 
-        <button id="send-btn" class="glass-button">ОТПРАВИТЬ В ТАБЛИЦУ</button>
+    <select id="route-select" class="glass-select" onchange="updateCounterDisplay()">
+        <option value="1">№1</option><option value="2">№2</option>
+        <option value="3">№3</option><option value="4">№4</option>
+        <option value="5">№5</option><option value="6">№6</option>
+        <option value="7">№7</option><option value="8">№8</option>
+        <option value="9">№9</option>
+    </select>
+
+    <button id="send-btn" class="glass-button">ОТПРАВИТЬ В ТАБЛИЦУ</button>
+</div>
+
+<div class="history-panel" id="history-list">
     </div>
 
-    <div class="copyright">
-        DEVELOPED BY D. MARTINKEVICH FOR SOFRINOKBT
-    </div>
+<div class="copyright">DEVELOPED BY D. MARTINKEVICH FOR SOFRINOKBT</div>
 
 <script>
-    // Вставьте сюда вашу ссылку из Google Apps Script
-    const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz3wlTxGMw4miB93yAJ6efDwa_FQAazKGpvBPYlB36Nn1BKnOk_ew_Je-ZmMgpCCT5SPA/exec';
+    const GOOGLE_SCRIPT_URL = 'ВАША_ССЫЛКА_ТУТ';
     
     let lastScannedId = null;
+    let lastSignalTime = 0; // Для контроля непрерывного сигнала
 
-    function onScanSuccess(decodedText) {
-        // Логика извлечения ID из середины ($1:1:ID:ДАТА)
-        const parts = decodedText.split(':');
-        let extractedId = decodedText;
+    // 1. Загрузка данных из памяти телефона (или создание новых, если пусто)
+    let countsByRoute = JSON.parse(localStorage.getItem('sofrinoCounts')) || {1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0};
+    let history = JSON.parse(localStorage.getItem('sofrinoHistory')) || [];
 
-        if (parts.length >= 3) {
-            extractedId = parts[2];
-        }
-        
-        if (lastScannedId !== extractedId) {
-            lastScannedId = extractedId;
-            document.getElementById('result').innerText = "ID: " + extractedId;
-            // Можно добавить легкую вибрацию при сканировании
-            if (navigator.vibrate) navigator.vibrate(100);
+    // Функция сохранения данных в память телефона
+    function saveDataLocally() {
+        localStorage.setItem('sofrinoCounts', JSON.stringify(countsByRoute));
+        localStorage.setItem('sofrinoHistory', JSON.stringify(history));
+    }
+
+    // Звуковой сигнал
+    function playBeep() {
+        try {
+            const context = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = context.createOscillator();
+            const gain = context.createGain();
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(880, context.currentTime); 
+            gain.gain.setValueAtTime(0.1, context.currentTime);
+            oscillator.connect(gain);
+            gain.connect(context.destination);
+            oscillator.start();
+            oscillator.stop(context.currentTime + 0.1);
+        } catch(e) {}
+    }
+
+    // Зеленая вспышка
+    function triggerFlash() {
+        const flash = document.getElementById('flash-overlay');
+        flash.style.opacity = '1';
+        setTimeout(() => { flash.style.opacity = '0'; }, 100);
+    }
+
+    // Обновление интерфейса
+    function updateCounterDisplay() {
+        const route = document.getElementById('route-select').value;
+        document.getElementById('route-counter').innerText = `СКАНИРОВАНО: ${countsByRoute[route]}`;
+    }
+
+    // Сброс счетчика текущего маршрута
+    function resetCurrentRoute() {
+        if(confirm("Точно сбросить счетчик для этого маршрута?")) {
+            const route = document.getElementById('route-select').value;
+            countsByRoute[route] = 0;
+            saveDataLocally();
+            updateCounterDisplay();
         }
     }
 
-    // Инициализация сканера
-    const html5QrCode = new Html5Qrcode("reader");
-    const config = { 
-        fps: 20, 
-        qrbox: { width: 280, height: 280 },
-        aspectRatio: 1.0
-    };
+    // Отрисовка истории
+    function renderHistory() {
+        const list = document.getElementById('history-list');
+        list.innerHTML = history.map(item => 
+            `<div class="history-item"><span>ID: ${item.id}</span><span>${item.time}</span></div>`
+        ).join('');
+    }
 
+    function addToHistory(id) {
+        const time = new Date().toLocaleTimeString();
+        history.unshift({id, time}); 
+        if (history.length > 5) history.pop(); 
+        saveDataLocally();
+        renderHistory();
+    }
+
+    // Основная логика сканирования
+    function onScanSuccess(decodedText) {
+        // Извлекаем нужный ID из середины (формат $1:1:ID:DATA)
+        const parts = decodedText.split(':');
+        const extractedId = parts.length >= 3 ? parts[2] : decodedText;
+        
+        const now = Date.now();
+
+        // Если это НОВЫЙ код ИЛИ мы продолжаем держать камеру на старом (сигнал каждые 1.5 сек)
+        if (lastScannedId !== extractedId || (now - lastSignalTime > 1500)) {
+            
+            // Постоянная обратная связь при наведении
+            playBeep();
+            triggerFlash();
+            lastSignalTime = now;
+
+            // Записываем статистику ТОЛЬКО если это действительно новый код
+            if (lastScannedId !== extractedId) {
+                lastScannedId = extractedId;
+                
+                const currentRoute = document.getElementById('route-select').value;
+                countsByRoute[currentRoute]++;
+                saveDataLocally();
+                
+                updateCounterDisplay();
+                document.getElementById('result').innerText = "ID: " + extractedId;
+                document.getElementById('result').style.color = "#00ffcc";
+                addToHistory(extractedId);
+
+                if (navigator.vibrate) navigator.vibrate(100);
+            }
+        }
+    }
+
+    // Инициализация при загрузке страницы
+    updateCounterDisplay();
+    renderHistory();
+
+    // Запуск камеры
+    const html5QrCode = new Html5Qrcode("reader");
     html5QrCode.start(
         { facingMode: "environment" }, 
-        config, 
+        { fps: 20, qrbox: { width: 280, height: 280 } }, 
         onScanSuccess
-    ).catch(err => console.error("Ошибка запуска камеры:", err));
+    );
 
-    // Обработка кнопки отправки
+    // Отправка в Google
     document.getElementById('send-btn').addEventListener('click', function() {
         const route = document.getElementById('route-select').value;
-        const btn = this;
+        if (!lastScannedId) return alert("Ничего не отсканировано!");
 
-        if (!lastScannedId) {
-            alert("Сначала отсканируйте штрих-код!");
-            return;
-        }
-
-        btn.innerText = "ОТПРАВКА...";
-        btn.disabled = true;
+        this.innerText = "ОТПРАВКА...";
+        this.disabled = true;
 
         fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
             mode: 'no-cors',
-            cache: 'no-cache',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                value: lastScannedId, 
-                route: route 
-            })
-        })
-        .then(() => {
-            alert("Данные успешно внесены в таблицу!");
-            btn.innerText = "ОТПРАВИТЬ В ТАБЛИЦУ";
-            btn.disabled = false;
-        })
-        .catch(error => {
-            console.error('Ошибка:', error);
-            alert("Ошибка связи с таблицей.");
-            btn.disabled = false;
-            btn.innerText = "ОТПРАВИТЬ В ТАБЛИЦУ";
+            body: JSON.stringify({ value: lastScannedId, route: route })
+        }).then(() => {
+            alert("Данные в таблице!");
+            this.innerText = "ОТПРАВИТЬ В ТАБЛИЦУ";
+            this.disabled = false;
+        }).catch(() => {
+            alert("Ошибка сети");
+            this.disabled = false;
         });
     });
 </script>
