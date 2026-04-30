@@ -6,112 +6,90 @@
     <title>SOFRINOKBT Scanner</title>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        :root { --accent: #00ffcc; --err: #ff6b6b; --bg: #0f0f1a; }
-        body { margin: 0; background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
-        
-        #reader-container { position: relative; width: 320px; height: 320px; margin-top: 30px; border-radius: 24px; overflow: hidden; box-shadow: 0 0 20px rgba(0, 255, 204, 0.2); }
-        #reader { width: 100% !important; border: none !important; }
-        #scan-frame { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 280px; border: 2px solid var(--accent); z-index: 5; pointer-events: none; box-shadow: 0 0 0 1000px rgba(0,0,0,0.5); }
-        
-        .ui-panel { width: 90%; max-width: 360px; margin-top: 20px; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 20px; backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); }
-        .status { padding: 15px; background: rgba(0,0,0,0.4); border-radius: 12px; text-align: center; font-size: 1.1rem; color: var(--accent); margin-bottom: 15px; border-left: 4px solid var(--accent); }
-        
-        select, .btn { width: 100%; padding: 14px; margin-top: 10px; border-radius: 12px; border: none; font-size: 1rem; font-weight: bold; transition: 0.3s; }
-        select { background: rgba(255,255,255,0.1); color: white; }
-        .btn { background: var(--accent); color: #000; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
-        .btn:active { transform: scale(0.98); opacity: 0.8; }
-        
-        .history { width: 90%; max-width: 360px; margin-top: 15px; }
-        .item { background: rgba(255,255,255,0.07); margin-bottom: 8px; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .item .del { color: var(--err); font-size: 1.2rem; padding: 0 5px; cursor: pointer; }
-        
-        .footer { margin: 30px 0; font-size: 0.75rem; opacity: 0.7; letter-spacing: 1.5px; font-weight: bold; }
+        body { margin: 0; background: #0f0f1a; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
+        #reader-wrapper { position: relative; width: 320px; height: 320px; margin-top: 20px; border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
+        #custom-overlay { position: absolute; top: 20px; left: 20px; width: 280px; height: 280px; border: 2px solid #00ffcc; z-index: 5; pointer-events: none; box-shadow: 0 0 0 500px rgba(0,0,0,0.5); }
+        .panel { width: 90%; max-width: 360px; margin-top: 20px; background: rgba(255,255,255,0.05); padding: 20px; border-radius: 20px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .res { padding: 15px; background: #000; border-radius: 12px; text-align: center; font-size: 1.2rem; color: #00ffcc; margin-bottom: 15px; border: 1px solid #00ffcc; }
+        select, .btn { width: 100%; padding: 15px; margin-top: 10px; border-radius: 12px; border: none; font-size: 1rem; font-weight: bold; }
+        .btn { background: #00ffcc; color: #000; cursor: pointer; }
+        .history { width: 90%; max-width: 360px; margin-top: 20px; }
+        .item { background: rgba(255,255,255,0.1); padding: 10px; margin-bottom: 5px; border-radius: 8px; display: flex; justify-content: space-between; }
+        .copy { margin-top: 30px; font-size: 0.7rem; opacity: 0.5; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div id="reader-container">
+<div id="reader-wrapper">
     <div id="reader"></div>
-    <div id="scan-frame"></div>
+    <div id="custom-overlay"></div>
 </div>
 
-<div class="ui-panel">
-    <div id="result" class="status">ОЖИДАНИЕ...</div>
+<div class="panel">
+    <div id="result" class="res">СКАНЕР ГОТОВ</div>
     <select id="route">
-        <option value="1">МАРШРУТ №1</option><option value="2">МАРШРУТ №2</option>
-        <option value="3">МАРШРУТ №3</option><option value="4">МАРШРУТ №4</option>
+        <option value="1">Маршрут №1</option><option value="2">Маршрут №2</option>
+        <option value="3">Маршрут №3</option><option value="4">Маршрут №4</option>
     </select>
-    <button id="send" class="btn" onclick="sendData()">ОТПРАВИТЬ В ТАБЛИЦУ</button>
+    <button id="send-btn" class="btn" onclick="send()">ОТПРАВИТЬ ДАННЫЕ</button>
 </div>
 
-<div id="history" class="history"></div>
-
-<div class="footer">DEVELOPED BY D. MARTINKEVICH FOR SOFRINOKBT</div>
+<div id="history-list" class="history"></div>
+<div class="copy">DEVELOPED BY D. MARTINKEVICH FOR SOFRINOKBT</div>
 
 <script>
-    // ВСТАВЬТЕ СЮДА ССЫЛКУ ИЗ ОКНА "НОВОЕ РАЗВЕРТЫВАНИЕ"
-    const API_URL = 'https://script.google.com/macros/s/AKfycbzAl86rXPtoSF9ORJvS9SggvJSKMk9PRA-kMmyYGpvBmOrFaOw8AgPfwN13KzflfQcqAg/exec';
+    // ТВОЯ ССЫЛКА ИЗ РАЗВЕРТЫВАНИЯ
+    const URL = 'https://script.google.com/macros/s/AKfycbysOLS6KdBf4soTVNhWEcbfVHEIYsxnsUGn89On5SRsAz3oi8oQLEUetddFjtuW8zbcIA/exec';
 
-    let db = JSON.parse(localStorage.getItem('scans')) || {1:[],2:[],3:[],4:[]};
+    let data = JSON.parse(localStorage.getItem('scans')) || {1:[],2:[],3:[],4:[]};
     const scanner = new Html5Qrcode("reader");
 
-    scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 280 }, (text) => {
+    scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: 280 }, (text) => {
         const id = text.includes(':') ? text.split(':')[2].trim() : text.trim();
         const route = document.getElementById('route').value;
         const res = document.getElementById('result');
 
-        if (db[route].some(i => i.id === id)) {
-            res.style.color = 'var(--err)';
+        if (data[route].some(i => i.id === id)) {
             res.innerText = "ДУБЛИКАТ: " + id;
+            res.style.color = "#ff6b6b";
             return;
         }
 
-        res.style.color = 'var(--accent)';
         res.innerText = id;
-        db[route].unshift({ id, time: new Date().toLocaleTimeString().slice(0,5) });
-        save();
+        res.style.color = "#00ffcc";
+        data[route].unshift({ id, time: new Date().toLocaleTimeString().slice(0,5) });
+        localStorage.setItem('scans', JSON.stringify(data));
+        update();
     });
 
-    function save() {
-        localStorage.setItem('scans', JSON.stringify(db));
-        render();
-    }
-
-    function render() {
+    function update() {
         const r = document.getElementById('route').value;
-        document.getElementById('history').innerHTML = db[r].map((item, idx) => `
-            <div class="item">
-                <span><b>${item.id}</b> <small>(${item.time})</small></span>
-                <span class="del" onclick="remove(${idx})">✕</span>
-            </div>
+        document.getElementById('history-list').innerHTML = data[r].map((i, idx) => `
+            <div class="item"><span>${i.id}</span><span onclick="del(${idx})" style="color:#ff6b6b">✕</span></div>
         `).join('');
     }
 
-    function remove(idx) {
-        db[document.getElementById('route').value].splice(idx, 1);
-        save();
+    function del(idx) {
+        data[document.getElementById('route').value].splice(idx, 1);
+        localStorage.setItem('scans', JSON.stringify(data));
+        update();
     }
 
-    async function sendData() {
+    async function send() {
         const r = document.getElementById('route').value;
-        const codes = db[r].map(i => i.id).join(', ');
-        if (!codes) return alert("Список пуст!");
+        const codes = data[r].map(i => i.id).join(', ');
+        if (!codes) return alert("Пусто!");
 
-        const btn = document.getElementById('send');
-        btn.innerText = "ОТПРАВКА..."; btn.disabled = true;
+        const b = document.getElementById('send-btn');
+        b.innerText = "ОТПРАВЛЯЮ..."; b.disabled = true;
 
         try {
-            await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ value: codes, route: r }) });
-            alert("Данные за Маршрут №" + r + " успешно отправлены!");
-        } catch(e) {
-            alert("Ошибка сети");
-        } finally {
-            btn.innerText = "ОТПРАВИТЬ В ТАБЛИЦУ"; btn.disabled = false;
-        }
+            await fetch(URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ value: codes, route: r }) });
+            alert("Готово! Проверь таблицу.");
+        } catch(e) { alert("Ошибка!"); }
+        b.innerText = "ОТПРАВИТЬ ДАННЫЕ"; b.disabled = false;
     }
-
-    document.getElementById('route').onchange = render;
-    render();
+    update();
 </script>
 </body>
 </html>
