@@ -23,10 +23,9 @@
             display: flex;
             flex-direction: column;
             min-height: 100vh;
-            transition: background-color 0.2s ease; /* Для эффекта моргания */
+            transition: background-color 0.2s ease;
         }
 
-        /* Контейнер сканера */
         .scanner-container {
             width: 100%;
             max-width: 400px;
@@ -37,12 +36,10 @@
             border: 1px solid var(--glass-border);
         }
 
-        /* Стилизация внутренней рамки библиотеки */
         #reader { border: none !important; }
-        #reader__scan_region svg { fill: var(--accent-green) !important; } /* Цвет уголков */
+        #reader__scan_region svg { fill: var(--accent-green) !important; }
         #reader video { object-fit: cover !important; }
 
-        /* Эффекты вспышки */
         body.flash-green { background-color: rgba(48, 209, 88, 0.5) !important; }
         body.flash-red { background-color: rgba(255, 69, 58, 0.5) !important; }
 
@@ -99,7 +96,7 @@
             <option value="Маршрут 946">Маршрут 946</option>
             <option value="Маршрут 943">Маршрут 943</option>
             <option value="Маршрут 919">Маршрут 919</option>
-            <option value="Маршрут 943">Маршрут 945</option>
+            <option value="Маршрут 945">Маршрут 945</option>
         </select>
     </div>
 
@@ -120,14 +117,19 @@
     </div>
 
 <script>
+    // Инициализация хранилища динамически из списка маршрутов
     let routesStore = {};
-    for(let i=1; i<=9; i++) { routesStore[`Маршрут ${i}`] = []; }
+    const routeSelect = document.getElementById('route-select');
+    
+    // Проходим по всем пунктам меню и создаем для них пустые списки
+    Array.from(routeSelect.options).forEach(option => {
+        routesStore[option.value] = [];
+    });
     
     let lastScannedCode = null;
     let audioContext = null;
     let isSending = false;
 
-    // Инициализация звука (нужно для iOS)
     function initAudio() {
         if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
         if (audioContext.state === 'suspended') audioContext.resume();
@@ -160,7 +162,11 @@
         const currentRoute = document.getElementById('route-select').value;
         const status = document.getElementById('status-display');
 
-        // Проверка на дубликат в текущем маршруте
+        // Безопасная проверка существования маршрута в памяти
+        if (!routesStore[currentRoute]) {
+            routesStore[currentRoute] = [];
+        }
+
         if (routesStore[currentRoute].some(item => item.id === cleanId)) {
             if (lastScannedCode !== cleanId) {
                 screenFlash('red');
@@ -171,7 +177,6 @@
             return;
         }
 
-        // Успешный новый скан
         lastScannedCode = cleanId;
         playBeep();
         screenFlash('green');
@@ -192,6 +197,10 @@
     function updateInterface() {
         const route = document.getElementById('route-select').value;
         const container = document.getElementById('history-box');
+        
+        // Если вдруг выбрали маршрут, которого нет в памяти — создаем его
+        if (!routesStore[route]) routesStore[route] = [];
+        
         const list = routesStore[route];
         
         container.innerHTML = list.length > 0 ? '<h4 style="color:#8e8e93; margin:0 0 10px 5px">ИСТОРИЯ</h4>' : '';
@@ -213,7 +222,7 @@
         const dataToSend = routesStore[route];
         const status = document.getElementById('status-display');
         
-        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyYdqLYYn0z6m8UgpS6mpWtw199xB0Eqbm6Oc2fI8haklkhd3ajBuI4Tu_OHvaopwb0/exec'; // <--- ВСТАВЬ СВОЙ URL ИЗ GOOGLE APPS SCRIPT
+        const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyYdqLYYn0z6m8UgpS6mpWtw199xB0Eqbm6Oc2fI8haklkhd3ajBuI4Tu_OHvaopwb0/exec';
 
         isSending = true;
         updateInterface();
@@ -231,7 +240,7 @@
             status.textContent = 'Успешно отправлено!';
             status.style.color = 'var(--accent-green)';
         } catch (err) {
-            alert('Ошибка сети! Проверьте интернет.');
+            alert('Ошибка сети!');
             status.textContent = 'Ошибка!';
         } finally {
             isSending = false;
@@ -239,7 +248,6 @@
         }
     }
 
-    // Запуск сканера
     const html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
         fps: 20, 
         qrbox: { width: 250, height: 250 },
@@ -249,7 +257,11 @@
     
     html5QrcodeScanner.render(onScanSuccess);
 
-    document.getElementById('route-select').addEventListener('change', updateInterface);
+    // Сбрасываем последний код при смене маршрута, чтобы можно было сканировать повторно в другой список
+    document.getElementById('route-select').addEventListener('change', () => {
+        lastScannedCode = null;
+        updateInterface();
+    });
 </script>
 </body>
 </html>
