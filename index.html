@@ -42,7 +42,6 @@
         #reader__scan_region svg { fill: var(--accent-green) !important; }
         #reader video { object-fit: cover !important; }
 
-        /* Кнопка фонарика (по умолчанию скрыта, пока не проверим поддержку) */
         .torch-btn {
             position: absolute;
             top: 15px;
@@ -53,7 +52,7 @@
             border-radius: 50%;
             background: rgba(0, 0, 0, 0.5);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            display: none; /* Изменено: скрываем изначально */
+            display: none;
             align-items: center;
             justify-content: center;
             cursor: pointer;
@@ -102,6 +101,7 @@
             background: rgba(255,255,255,0.05);
             padding: 12px; border-radius: 12px; margin-bottom: 8px;
             display: flex; justify-content: space-between;
+            align-items: center;
             border: 1px solid rgba(255,255,255,0.05);
         }
 
@@ -153,14 +153,11 @@
     </div>
 
 <script>
-    // ПРАВКА 1: Загружаем данные из localStorage (защита от потери)
     let routesStore = JSON.parse(localStorage.getItem('scanner_routes')) || {};
-    
     const routeSelect = document.getElementById('route-select');
+    
     Array.from(routeSelect.options).forEach(option => { 
-        if (!routesStore[option.value]) {
-            routesStore[option.value] = []; 
-        }
+        if (!routesStore[option.value]) routesStore[option.value] = []; 
     });
     
     let lastScannedCode = null;
@@ -169,7 +166,6 @@
     let isTorchOn = false;
     let scannerInstance = null;
 
-    // Вспомогательная функция сохранения
     function saveToLocal() {
         localStorage.setItem('scanner_routes', JSON.stringify(routesStore));
     }
@@ -179,7 +175,6 @@
         if (audioContext.state === 'suspended') audioContext.resume();
     }
 
-    // Добавили инициализацию звука при выборе маршрута
     document.getElementById('route-select').addEventListener('change', () => {
         initAudio();
         lastScannedCode = null;
@@ -205,7 +200,6 @@
         if (!scannerInstance) return;
         try {
             const state = !isTorchOn;
-            // ПРАВКА 2: Правильный синтаксис WebRTC — 'advanced', а не 'advance'
             await scannerInstance.applyVideoConstraints({
                 advanced: [{ torch: state }]
             });
@@ -220,8 +214,6 @@
         if (isSending) return;
 
         let cleanId = decodedText.trim();
-        
-        // ПРАВКА 3: Безопасный парсинг сплита
         if (cleanId.includes(':')) {
             const parts = cleanId.split(':');
             cleanId = parts.length > 2 ? parts[2] : cleanId;
@@ -249,21 +241,27 @@
         status.style.color = 'var(--accent-green)';
         if (navigator.vibrate) navigator.vibrate(50);
 
-        routesStore[currentRoute].unshift({ id: cleanId, time: new Date().toLocaleTimeString().slice(0, 5) });
-        saveToLocal(); // Сохраняем после сканирования
+        // ПРАВКА: Теперь время сохраняется с секундами
+        const now = new Date();
+        const timeWithSeconds = now.toLocaleTimeString('ru-RU');
+
+        routesStore[currentRoute].unshift({ 
+            id: cleanId, 
+            time: timeWithSeconds 
+        });
+        
+        saveToLocal();
         updateInterface();
     }
 
     function updateInterface() {
         const route = document.getElementById('route-select').value;
         const container = document.getElementById('history-box');
-        if (!routesStore[route]) routesStore[route] = [];
-        const list = routesStore[route];
+        const list = routesStore[route] || [];
         
-        // ПРАВКА 4: Оптимизированный рендеринг списка без цикличного обращения к DOM
         let htmlString = list.length > 0 ? '<h4 style="color:#8e8e93; margin:0 0 10px 5px">ИСТОРИЯ</h4>' : '';
         htmlString += list.map(item => 
-            `<div class="history-item"><b>${item.id}</b><span style="color:#8e8e93">${item.time}</span></div>`
+            `<div class="history-item"><b>${item.id}</b><span style="color:#8e8e93; font-variant-numeric: tabular-nums;">${item.time}</span></div>`
         ).join('');
         container.innerHTML = htmlString;
 
@@ -282,26 +280,20 @@
         status.textContent = 'Отправка...';
 
         try {
-            // ПРАВКА 5: Убрали no-cors и добавили text/plain для обхода Preflight
-            // Важно: в Google Apps Script функция doPost(e) должна парсить e.postData.contents 
-            // и возвращать ContentService.createTextOutput("Success")
             const response = await fetch(WEB_APP_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8' 
-                },
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({ route: route, data: routesStore[route] })
             });
 
-            if (!response.ok) throw new Error('Ошибка ответа сервера');
+            if (!response.ok) throw new Error('Ошибка сервера');
 
             routesStore[route] = [];
-            saveToLocal(); // Очищаем хранилище после отправки
+            saveToLocal();
             lastScannedCode = null;
             status.textContent = 'Успешно отправлено!';
         } catch (err) {
-            console.error(err);
-            alert('Ошибка сети или сервера! Данные сохранены на устройстве.');
+            alert('Ошибка сети! Данные сохранены локально.');
             status.textContent = 'Ошибка!';
         } finally {
             isSending = false;
@@ -309,7 +301,6 @@
         }
     }
 
-    // Инициализация сканера
     const html5QrCode = new Html5Qrcode("reader");
     scannerInstance = html5QrCode; 
 
@@ -320,25 +311,17 @@
         config, 
         onScanSuccess
     ).then(() => {
-        // ПРАВКА 6: Проверка поддержки фонарика перед показом кнопки
         const videoElement = document.querySelector('#reader video');
         if (videoElement && videoElement.srcObject) {
             const track = videoElement.srcObject.getVideoTracks()[0];
-            if (track && track.getCapabilities) {
-                const caps = track.getCapabilities();
-                if (caps.torch) {
-                    document.getElementById('torch-toggle').style.display = 'flex';
-                }
+            if (track && track.getCapabilities && track.getCapabilities().torch) {
+                document.getElementById('torch-toggle').style.display = 'flex';
             }
         }
     }).catch(err => {
-        console.error("Ошибка запуска камеры", err);
-        // Убрали Fallback-интерфейс, который ломал верстку.
-        // Выводим системное уведомление.
-        alert("Не удалось получить доступ к камере. Проверьте разрешения в настройках браузера.");
+        alert("Камера недоступна. Проверьте разрешения.");
     });
 
-    // Рендерим интерфейс при старте
     updateInterface();
 </script>
 </body>
